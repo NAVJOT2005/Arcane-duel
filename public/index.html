@@ -2057,9 +2057,9 @@
     <div class="modal-box arcane">
       <span class="eyebrow">SUMMONING A RIVAL</span>
       <h2>ROOM READY</h2>
-      <p>Share this code — or send the invite link.</p>
+      <p>Send this code to your rival. They enter it under Play → Join with Code.</p>
       <div class="room-code" id="waitingCodeDisplay">----</div>
-      <button id="btnCopyInvite" class="arc-btn sec" style="font-size: 0.9em;">📋 COPY INVITE LINK</button>
+      <button id="btnCopyInvite" class="arc-btn sec" style="font-size: 0.9em;">📋 COPY ROOM CODE</button>
       <p style="margin-top: 12px; font-size: 0.9em; color: #8d84c8;" id="waitingStatusText">Waiting for a challenger to answer…</p>
       <button id="btnCancelWaiting" class="arc-btn ghost" style="font-size: 0.85em; margin-top: 8px;">LEAVE LOBBY</button>
     </div>
@@ -4864,13 +4864,17 @@
   });
 
   btnCopyInvite.addEventListener('click', () => {
-    const url = `${window.location.origin}/?room=${currentRoom}`;
+    // Share the code itself, not a URL. The code is what players read out to
+    // each other, and it works anywhere — a pasted link does not.
+    const code = (currentRoom || waitingCodeDisplay.textContent || '').trim();
+    if (!code) return;
+    const label = '📋 COPY ROOM CODE';
     const done = () => {
-      btnCopyInvite.textContent = '✅ COPIED!';
-      setTimeout(() => { btnCopyInvite.textContent = '📋 COPY INVITE LINK'; }, 2000);
+      btnCopyInvite.textContent = `✅ ${code} COPIED`;
+      setTimeout(() => { btnCopyInvite.textContent = label; }, 2000);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(url).then(done).catch(done);
+      navigator.clipboard.writeText(code).then(done).catch(done);
     } else {
       done();
     }
