@@ -436,15 +436,88 @@
       font-size: 0.85rem;
       cursor: pointer;
     }
+
+    /* ─── Disconnect Alert Banner ─── */
+    #disconnectBanner {
+      display: none;
+      width: 100%;
+      background: #851a1a;
+      border: 1px solid #ef4444;
+      color: #fee2e2;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      text-align: center;
+      margin-bottom: 8px;
+      animation: alertPulse 1.5s infinite alternate;
+    }
+    @keyframes alertPulse {
+      from { background: #851a1a; }
+      to { background: #b91c1c; }
+    }
+
+    /* ─── How to Play Modal ─── */
+    .btn-help {
+      background: none;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-help:hover {
+      border-color: #f97316;
+      color: #f97316;
+    }
+    .rule-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .rule-card h3 {
+      font-size: 0.95rem;
+      color: #f97316;
+      margin-bottom: 4px;
+    }
+    .rule-card p {
+      font-size: 0.82rem;
+      color: #cbd5e1;
+      line-height: 1.4;
+      margin-bottom: 6px;
+    }
+    .rule-card table {
+      width: 100%;
+      font-size: 0.78rem;
+      border-collapse: collapse;
+      margin-top: 6px;
+    }
+    .rule-card th {
+      color: #f97316;
+      text-align: left;
+      padding: 4px 6px;
+      border-bottom: 1px solid #334155;
+    }
+    .rule-card td {
+      padding: 4px 6px;
+      border-bottom: 1px solid #1e293b;
+    }
   </style>
 </head>
 <body>
 
   <header>
     <div class="game-logo">⚡ MAGE DUEL</div>
-    <div id="netPill" class="net-pill">
-      <div class="dot"></div>
-      <span id="netText">Connecting...</span>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <button id="btnHowToPlay" class="btn-help">📖 How to Play</button>
+      <div id="netPill" class="net-pill">
+        <div class="dot"></div>
+        <span id="netText">Connecting...</span>
+      </div>
     </div>
   </header>
 
@@ -498,6 +571,7 @@
 
   <!-- 3. Battle View -->
   <div id="viewBattle" class="view-panel">
+    <div id="disconnectBanner">⚠️ Opponent disconnected! Forfeit win in <strong id="disconnectCountdown">30s</strong>...</div>
     <div class="arena-duo">
       <!-- Opponent Card (Top) -->
       <div id="oppCard" class="mage-card opp">
@@ -580,6 +654,48 @@
     <!-- Battle Log -->
     <div class="log-box" id="battleLog">
       <div class="log-row log-system">Battle initiated! Cast spells with buttons or voice.</div>
+    </div>
+  </div>
+
+  <!-- How to Play Modal (Readable in < 45 seconds) -->
+  <div id="howToPlayModal" class="modal-backdrop">
+    <div class="modal-card" style="max-width: 500px; text-align: left;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2 style="font-size: 1.4rem; color: #f97316;">⚡ HOW TO PLAY (30s Guide)</h2>
+        <button id="btnCloseHelp" style="background: none; border: none; color: #94a3b8; font-size: 1.4rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div class="rule-card">
+        <h3>🎯 OBJECTIVE</h3>
+        <p>Reduce opponent's <strong>100 HP to 0</strong>. Cast spells by <strong>shouting incantations</strong> into your mic, tapping buttons, or typing.</p>
+      </div>
+
+      <div class="rule-card">
+        <h3>⚡ CORE MECHANICS</h3>
+        <p>• <strong>Mana:</strong> Auto-regenerates (1/sec, max 10). Below 30 HP, mana regenerates faster (1.5/sec comeback!).</p>
+        <p>• <strong>🛡️ Perfect Block:</strong> Cast Block within <strong>0.6s</strong> of an incoming hit to take 0 damage and <strong>STUN</strong> the attacker!</p>
+        <p>• <strong>❌ Interrupts:</strong> Hitting a mage charging <strong>Heal</strong> or <strong>Ultimate</strong> cancels their wind-up!</p>
+        <p>• <strong>⚡ Lightning:</strong> Ignores Block shields completely. Destroys turtles.</p>
+      </div>
+
+      <div class="rule-card">
+        <h3>🗣️ SPELL INCANTATIONS</h3>
+        <table>
+          <thead>
+            <tr><th>Spell</th><th>Say / Type</th><th>Type</th><th>Effect</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Zap</strong></td><td>"Zap!"</td><td>Instant (1M)</td><td>4 dmg (fast)</td></tr>
+            <tr><td><strong>Block</strong></td><td>"Nope!"</td><td>Instant (0M)</td><td>1.5s shield (4s cd)</td></tr>
+            <tr><td><strong>Fireball</strong></td><td>"Burn!" / "Eat flames!"</td><td>1.5s Wind-up (3M)</td><td>18 dmg</td></tr>
+            <tr><td><strong>Lightning</strong></td><td>"Thunder strike!"</td><td>1.0s Wind-up (3M)</td><td>7 dmg (Unblockable)</td></tr>
+            <tr><td><strong>Heal</strong></td><td>"Mom's soup!"</td><td>2.0s Wind-up (4M)</td><td>+20 HP (Interruptible)</td></tr>
+            <tr><td><strong>Ultimate</strong></td><td>"Final explosion!"</td><td>3.0s Wind-up (10M)</td><td>50 dmg (15 chip dmg)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <button id="btnGotIt" class="btn btn-primary" style="width: 100%; margin-top: 4px;">Got It, Let's Duel!</button>
     </div>
   </div>
 
@@ -690,6 +806,8 @@
       socket.emit('create_room', { name }, (res) => {
         if (res.ok) {
           currentRoom = res.code;
+          sessionStorage.setItem('md_token', res.token);
+          sessionStorage.setItem('md_room', res.code);
           displayRoomCode.textContent = res.code;
           showView('waiting');
         }
@@ -702,13 +820,19 @@
       if (!code) return alert('Please enter a room code');
       localStorage.setItem('md_mage_name', name);
 
-      socket.emit('join_room', { code, name }, (res) => {
+      const savedToken = sessionStorage.getItem('md_room') === code ? sessionStorage.getItem('md_token') : null;
+
+      socket.emit('join_room', { code, name, token: savedToken }, (res) => {
         if (!res.ok) {
           alert(res.error || 'Failed to join room');
         } else {
           currentRoom = res.code;
+          sessionStorage.setItem('md_token', res.token);
+          sessionStorage.setItem('md_room', res.code);
           displayRoomCode.textContent = res.code;
-          showView('waiting');
+          if (!res.reconnected) {
+            showView('waiting');
+          }
         }
       });
     });
@@ -882,6 +1006,31 @@
       addLog('system', `⚠️ ${window.SPELLS[ev.spell].name} rejected: ${reasonMap[ev.reason] || ev.reason}`);
     });
 
+    // ─── Disconnect & Reconnect Handling ───
+    const disconnectBanner = document.getElementById('disconnectBanner');
+    const disconnectCountdown = document.getElementById('disconnectCountdown');
+    let disconnectTimerId = null;
+
+    socket.on('opponent_disconnected', (ev) => {
+      disconnectBanner.style.display = 'block';
+      addLog('system', `⚠️ ${ev.name} disconnected! 30s countdown started.`);
+
+      if (disconnectTimerId) clearInterval(disconnectTimerId);
+      disconnectTimerId = setInterval(() => {
+        const remaining = Math.max(0, Math.ceil((ev.deadline - Date.now()) / 1000));
+        disconnectCountdown.textContent = `${remaining}s`;
+        if (remaining <= 0) {
+          clearInterval(disconnectTimerId);
+        }
+      }, 500);
+    });
+
+    socket.on('opponent_reconnected', (ev) => {
+      disconnectBanner.style.display = 'none';
+      if (disconnectTimerId) clearInterval(disconnectTimerId);
+      addLog('system', `🎉 ${ev.name} reconnected to the duel!`);
+    });
+
     // Authoritative state reconciliation snapshot
     socket.on('state_snapshot', (data) => {
       const now = getServerNow();
@@ -936,6 +1085,25 @@
       rematchStatus.textContent = 'Waiting for opponent to accept...';
       socket.emit('rematch');
     });
+
+    // ─── How to Play Modal Logic ───
+    const howToPlayModal = document.getElementById('howToPlayModal');
+    const btnHowToPlay = document.getElementById('btnHowToPlay');
+    const btnCloseHelp = document.getElementById('btnCloseHelp');
+    const btnGotIt = document.getElementById('btnGotIt');
+
+    function openHelp() { howToPlayModal.classList.add('show'); }
+    function closeHelp() { howToPlayModal.classList.remove('show'); }
+
+    btnHowToPlay.addEventListener('click', openHelp);
+    btnCloseHelp.addEventListener('click', closeHelp);
+    btnGotIt.addEventListener('click', closeHelp);
+
+    // Auto-prompt on first visit (Competition requirement #2: clear rules in < 45s)
+    if (!localStorage.getItem('md_has_seen_help')) {
+      setTimeout(openHelp, 600);
+      localStorage.setItem('md_has_seen_help', '1');
+    }
 
     btnLeaveBattle.addEventListener('click', () => {
       endModal.classList.remove('show');
