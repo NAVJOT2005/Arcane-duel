@@ -21,7 +21,7 @@
       font-family: 'VT323', monospace;
       user-select: none;
       -webkit-user-select: none;
-      touch-action: manipulation;
+      touch-action: none;
       overflow: hidden;
     }
     body {
@@ -68,8 +68,8 @@
       gap: 10px;
     }
     .player-hud {
-      width: 38%;
-      background: rgba(11, 10, 26, 0.75);
+      width: 36%;
+      background: rgba(11, 10, 26, 0.78);
       border: 2px solid #5a4cc4;
       border-radius: 4px;
       padding: 4px 8px;
@@ -80,7 +80,7 @@
       display: flex;
       justify-content: space-between;
       line-height: 1.1;
-      font-size: 1.1em;
+      font-size: 1.05em;
     }
     .meter-wrap {
       height: clamp(8px, 1.4vw, 14px);
@@ -125,7 +125,7 @@
     /* Center info & announcements */
     .center-announcement {
       position: absolute;
-      top: 15%;
+      top: 14%;
       left: 50%;
       transform: translateX(-50%);
       text-align: center;
@@ -137,16 +137,44 @@
     }
     #spellFlash {
       display: none;
-      font-size: 1.4em;
+      font-size: 1.3em;
       color: #fde047;
       text-shadow: 0 0 10px #f97316, 2px 2px #000;
       animation: flashGrow 0.8s forwards;
     }
     @keyframes flashGrow {
       0% { transform: scale(0.6); opacity: 0; }
-      20% { transform: scale(1.2); opacity: 1; }
+      20% { transform: scale(1.15); opacity: 1; }
       80% { transform: scale(1); opacity: 1; }
-      100% { transform: scale(1.1); opacity: 0; }
+      100% { transform: scale(1.05); opacity: 0; }
+    }
+
+    /* ─── LIVE 3D WIND-UP CHARGE BARS ─── */
+    .windup-container {
+      margin-top: 4px;
+      display: none;
+    }
+    .windup-label {
+      font-size: 0.8em;
+      color: #fde047;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+      animation: blinkText 0.8s infinite alternate;
+    }
+    @keyframes blinkText { from { opacity: 0.7; } to { opacity: 1; } }
+    .windup-track {
+      height: 6px;
+      background: #110e24;
+      border: 1px solid #eab308;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .windup-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f59e0b, #facc15, #f97316);
+      transition: width 0.05s linear;
     }
 
     /* Disconnect Alert */
@@ -172,20 +200,41 @@
     }
     .interactive { pointer-events: auto; }
 
+    /* Movement D-Pad (Touch & Onscreen) */
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, clamp(28px, 4.5vw, 40px));
+      grid-template-rows: repeat(2, clamp(28px, 4.5vw, 40px));
+      gap: 3px;
+    }
+    .db {
+      font-family: inherit;
+      color: #cfc8ff;
+      background: rgba(11, 10, 26, 0.85);
+      border: 2px solid #7a6cf0;
+      font-size: 1.1em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+    .db:active { background: #3b82f6; color: white; }
+
     /* Voice & Typed feedback */
     .voice-control-box {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      max-width: 45%;
+      max-width: 42%;
     }
     .hud-btn {
       font-family: inherit;
       color: #cfc8ff;
       background: rgba(11, 10, 26, 0.85);
       border: 2px solid #7a6cf0;
-      font-size: clamp(13px, 2vw, 18px);
-      padding: 4px 10px;
+      font-size: clamp(12px, 1.8vw, 17px);
+      padding: 3px 8px;
       cursor: pointer;
       border-radius: 4px;
       display: flex;
@@ -228,14 +277,14 @@
       padding: 4px 8px;
       font-size: 0.9em;
       outline: none;
-      width: 140px;
+      width: 130px;
     }
     .typed-input:focus { border-color: #f97316; }
 
     /* Spell Buttons Grid (5 equal spells per class) */
     .spell-grid-hud {
       display: flex;
-      gap: clamp(4px, 1vw, 8px);
+      gap: clamp(4px, 0.8vw, 8px);
     }
     .spell-card-btn {
       font-family: inherit;
@@ -248,7 +297,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-width: clamp(52px, 8vw, 84px);
+      min-width: clamp(50px, 7.5vw, 82px);
       position: relative;
       overflow: hidden;
       transition: transform 0.08s, border-color 0.15s;
@@ -270,6 +319,22 @@
       align-items: center;
       font-size: 1.1em;
       font-weight: bold;
+    }
+
+    /* ─── FLOATING DAMAGE / BUFF NUMBERS ─── */
+    .ft {
+      position: absolute;
+      transform: translateX(-50%);
+      font-size: clamp(16px, 3.4vw, 28px);
+      text-shadow: 2px 2px #000;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 25;
+      animation: fl 1.3s ease-out forwards;
+    }
+    @keyframes fl {
+      from { margin-top: 0; opacity: 1; }
+      to { margin-top: -60px; opacity: 0; }
     }
 
     /* ─── MODALS & LOBBY OVERLAYS ─── */
@@ -371,6 +436,15 @@
       border-color: #64748b;
     }
 
+    /* Screen Flash FX */
+    #flashOverlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 18;
+    }
+
     /* Scanlines */
     .scan {
       position: absolute;
@@ -386,7 +460,7 @@
       position: absolute;
       inset: 0;
       pointer-events: none;
-      background: radial-gradient(circle at center, transparent 10%, rgba(0, 0, 0, 0.95) 70%, #000 100%);
+      background: radial-gradient(circle at 50% 55%, transparent 6%, #000 38%);
       opacity: 0;
       transition: opacity 0.3s;
       z-index: 15;
@@ -397,13 +471,15 @@
 <body>
 
 <div id="stage">
-  <!-- Retro PS1 Scanlines & Vignette -->
+  <!-- Screen Overlays -->
+  <div id="flashOverlay"></div>
   <div class="scan"></div>
   <div id="blindnessOverlay"></div>
+  <div id="flContainer"></div>
 
   <!-- ─── HUD ─── -->
   <div class="hud" id="gameHud" style="display: none;">
-    <!-- Top HUD: Players, HP, Mana, Statuses -->
+    <!-- Top HUD: Players, HP, Mana, Wind-up Bar, Statuses -->
     <div class="top-bar">
       <!-- YOU (Left) -->
       <div class="player-hud you">
@@ -417,13 +493,20 @@
           <span id="youManaVal">5.0 / 10</span>
         </div>
         <div class="meter-wrap" style="height: 6px;"><div id="youManaFill" class="mana-fill"></div></div>
+        
+        <!-- Live Wind-Up Charge Bar for You -->
+        <div class="windup-container" id="youWindupBox">
+          <div class="windup-label" id="youWindupLabel">⚡ CHARGING FIREBALL...</div>
+          <div class="windup-track"><div class="windup-bar" id="youWindupFill"></div></div>
+        </div>
+
         <div id="youStatusTags" class="status-tags"></div>
       </div>
 
       <!-- Header Center Menu Buttons -->
       <div style="display: flex; gap: 6px; pointer-events: auto;">
         <button id="btnOpenRules" class="hud-btn" style="padding: 2px 8px; font-size: 0.8em;">📖 RULES</button>
-        <div id="netPill" class="heard-chip" style="color: #4ade80;">ONLINE</div>
+        <div id="netPill" class="heard-chip" style="color: #4ade80;">WASD MOVE</div>
       </div>
 
       <!-- OPPONENT (Right) -->
@@ -438,6 +521,13 @@
           <span>MANA</span>
         </div>
         <div class="meter-wrap" style="height: 6px;"><div id="oppManaFill" class="mana-fill" style="margin-left: auto;"></div></div>
+        
+        <!-- Live Wind-Up Charge Bar for Opponent -->
+        <div class="windup-container" id="oppWindupBox">
+          <div class="windup-label" id="oppWindupLabel" style="color: #f87171;">⚡ RIVAL CHARGING...</div>
+          <div class="windup-track"><div class="windup-bar" id="oppWindupFill"></div></div>
+        </div>
+
         <div id="oppStatusTags" class="status-tags"></div>
       </div>
     </div>
@@ -449,15 +539,21 @@
       <div id="centerMsg"></div>
     </div>
 
-    <!-- Bottom HUD: Voice Control + 5 Spell Cards -->
+    <!-- Bottom HUD: DPad Movement + Voice Control + 5 Spell Cards -->
     <div class="bottom-bar">
+      <!-- Movement D-Pad (Touch & Visual) -->
+      <div class="dpad interactive" id="dpad">
+        <span></span><button class="db" data-k="w">W</button><span></span>
+        <button class="db" data-k="a">A</button><button class="db" data-k="s">S</button><button class="db" data-k="d">D</button>
+      </div>
+
       <!-- Voice Toggle & Typed Fallback -->
       <div class="voice-control-box interactive">
         <div style="display: flex; gap: 6px;">
           <button id="btnVoiceToggle" class="hud-btn">
             <span id="micIcon">🎤</span> <span id="micStatusText">VOICE OFF</span>
           </button>
-          <div class="heard-chip" id="heardDisplay" style="flex: 1;">Shout chants or tap below</div>
+          <div class="heard-chip" id="heardDisplay" style="flex: 1;">WASD move, shout spells or tap</div>
         </div>
         <form id="typedForm" class="typed-row" onsubmit="return false;">
           <input type="text" id="typedInput" class="typed-input" placeholder='Type "Burn!", "Nope!"...' autocomplete="off" />
@@ -476,7 +572,7 @@
   <div id="lobbyModal" class="modal-backdrop show">
     <div class="modal-box">
       <h2>⚔️ MAGE DUEL 3D ⚔️</h2>
-      <p>Choose your Mage Class & join the Arcane Arena!</p>
+      <p>Choose your Mage Class & enter the 3D Arena!</p>
 
       <div style="text-align: left; font-size: 1.05em; color: #fb923c; margin-bottom: 4px;">SELECT MAGE CLASS:</div>
       <div class="class-selector-grid" id="classSelectorGrid">
@@ -519,21 +615,19 @@
       <p style="text-align: center; color: #93c5fd;">Reduce rival's 100 HP to 0 by shouting incantations, typing, or tapping!</p>
       
       <div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
-        <div style="color: #f97316; font-weight: bold;">1. EQUAL CLASS KITS (5 SPELLS EACH):</div>
+        <div style="color: #f97316; font-weight: bold;">1. THIRD-PERSON MOVEMENT & COMBAT:</div>
+        <div style="font-size: 0.9em;">• <strong>WASD / D-Pad</strong>: Move around the arena to dodge and reposition!</div>
+        <div style="font-size: 0.9em;">• <strong>Third-Person Camera</strong>: Over-the-shoulder POV behind your character!</div>
+        <div style="font-size: 0.9em;">• <strong>Wind-Up Bars</strong>: Watch the live charge bar fill above player HP!</div>
+      </div>
+
+      <div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
+        <div style="color: #f97316; font-weight: bold;">2. EQUAL CLASS KITS (5 SPELLS EACH):</div>
         <div style="font-size: 0.9em;">• <strong>Block ("Nope!")</strong>: 0 mana, 1.5s shield. Cast in 0.6s before hit to <strong>STUN</strong>!</div>
         <div style="font-size: 0.9em;">• <strong>Heal ("Patch me up!")</strong>: +20 HP, 4 mana, 10s cooldown. Cancelled if hit!</div>
         <div style="font-size: 0.9em;">• <strong>Quick Spell (1M)</strong>: Fast instant jab. Land 3 to trigger Elemental Passive!</div>
         <div style="font-size: 0.9em;">• <strong>Signature Spell (3M)</strong>: 1.5s wind-up heavy nuke.</div>
         <div style="font-size: 0.9em;">• <strong>Ultimate Finisher (10M)</strong>: 3s wind-up, 50 damage finisher!</div>
-      </div>
-
-      <div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
-        <div style="color: #f97316; font-weight: bold;">2. ELEMENTAL SPECIAL EFFECTS:</div>
-        <div style="font-size: 0.9em;">• <strong>🔥 Fire</strong>: 3 Sparks inflict Burn DoT.</div>
-        <div style="font-size: 0.9em;">• <strong>❄️ Frost</strong>: 3 Shards Chill rival (50% slower mana regen).</div>
-        <div style="font-size: 0.9em;">• <strong>⚡ Lightning</strong>: 3 Zaps drain 1 mana. Thunder Strike ignores shield!</div>
-        <div style="font-size: 0.9em;">• <strong>🌍 Earth</strong>: 3 Pebbles Tremor rival. Boulder Smash gives 8 Stone Armor.</div>
-        <div style="font-size: 0.9em;">• <strong>🌑 Dark</strong>: 3 Darts inflict Eclipse Blindness! Soul Drain steals 6 HP.</div>
       </div>
 
       <button id="btnCloseRules" class="retro-btn" style="width: 100%; margin-top: 8px;">GOT IT, LET'S DUEL!</button>
@@ -566,6 +660,8 @@
   const stage = document.getElementById('stage');
   const W = 320, H = 180; // Retro PS1 resolution
   const socket = io();
+  const V = THREE.Vector3;
+  const rnd = (a, b) => a + Math.random() * (b - a);
 
   let myId = null;
   let currentRoom = null;
@@ -573,8 +669,12 @@
   let myMageClass = 'fire';
   let oppMageClass = 'frost';
   let opponentId = null;
-  let localGameState = { you: {}, opp: {} };
-  let clockOffset = 0;
+  let isHost = true;
+
+  // Local movement state
+  const myPos = { x: -5, z: 0 };
+  const oppPos = { x: 5, z: 0 };
+  const keys = {};
 
   // ─── 1. THREE.JS 3D SCENE SETUP ───
   const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
@@ -585,9 +685,7 @@
 
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0x07050f, 10, 32);
-  const camera = new THREE.PerspectiveCamera(52, W / H, 0.1, 70);
-  camera.position.set(0, 5.2, 11);
-  camera.lookAt(0, 1.8, 0);
+  const camera = new THREE.PerspectiveCamera(48, W / H, 0.1, 70);
 
   // Procedural retro texture generator
   function rng(s) {
@@ -608,13 +706,7 @@
     return t;
   }
   function rgb(b, v) {
-    return 'rgb(' + Math.min(255, Math.floor(b[0] * v)) + ',' + Math.min(255, Math.floor(b[1] * v)) + ',' + Math.min(255, Math.floor(b[2] * v)) + ')';
-  }
-  function noise(x, r, w, h, n) {
-    for (let i = 0; i < n; i++) {
-      x.fillStyle = r() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.18)';
-      x.fillRect(Math.floor(r() * w), Math.floor(r() * h), 1, 1);
-    }
+    return 'rgb(' + b.map(x => Math.min(255, Math.floor(x * v))).join(',') + ')';
   }
   function brickTex(base, seed, rx, ry) {
     return mkTex(32, 32, function(x, w, h) {
@@ -626,7 +718,10 @@
           x.fillRect(i * 16 + o + 1, j * 8 + 1, 14, 6);
         }
       }
-      noise(x, r, w, h, 130);
+      for (let n = 0; n < 130; n++) {
+        x.fillStyle = r() > 0.5 ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.16)';
+        x.fillRect(Math.floor(r() * w), Math.floor(r() * h), 1, 1);
+      }
     }, rx, ry);
   }
   function floorTex(rx, ry) {
@@ -636,7 +731,10 @@
         x.fillStyle = rgb([52, 48, 84], 0.8 + r() * 0.45);
         x.fillRect(a * 16 + 1, b * 16 + 1, 14, 14);
       }
-      noise(x, r, w, h, 150);
+      for (let n = 0; n < 150; n++) {
+        x.fillStyle = r() > 0.5 ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.18)';
+        x.fillRect(Math.floor(r() * w), Math.floor(r() * h), 1, 1);
+      }
     }, rx, ry);
   }
   function clothTex(base, seed) {
@@ -652,34 +750,15 @@
       }
     });
   }
-  function runeTex() {
-    return mkTex(128, 128, function(x) {
-      x.strokeStyle = '#8a7cf5'; x.lineWidth = 3; x.beginPath(); x.arc(64, 64, 60, 0, 6.283); x.stroke();
-      x.strokeStyle = '#5a4cc4'; x.lineWidth = 2; x.beginPath(); x.arc(64, 64, 46, 0, 6.283); x.stroke();
-      x.beginPath(); x.arc(64, 64, 14, 0, 6.283); x.stroke();
-      x.strokeStyle = '#8a7cf5';
-      for (let i = 0; i < 24; i++) {
-        const a = i / 24 * 6.283;
-        x.beginPath(); x.moveTo(64 + Math.cos(a) * 47, 64 + Math.sin(a) * 47);
-        x.lineTo(64 + Math.cos(a) * (i % 2 ? 54 : 58), 64 + Math.sin(a) * (i % 2 ? 54 : 58)); x.stroke();
-      }
-      x.strokeStyle = '#5a4cc4'; x.beginPath();
-      for (let k = 0; k < 5; k++) {
-        const b = k * 2.513 - 1.571, px = 64 + Math.cos(b) * 44, py = 64 + Math.sin(b) * 44;
-        if (k === 0) x.moveTo(px, py); else x.lineTo(px, py);
-      }
-      x.closePath(); x.stroke();
-    });
-  }
+  const GT = {};
   function glowTex(c) {
-    return mkTex(32, 32, function(x, w, h) {
+    return GT[c] || (GT[c] = mkTex(32, 32, function(x, w, h) {
       for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) {
-        const d = Math.sqrt((i - 15.5) * (i - 15.5) + (j - 15.5) * (j - 15.5)) / 16;
-        let v = Math.max(0, 1 - d); v *= v;
-        x.fillStyle = 'rgba(' + c + ',' + v.toFixed(2) + ')';
+        const d = Math.hypot(i - 15.5, j - 15.5) / 16, v = Math.max(0, 1 - d);
+        x.fillStyle = 'rgba(' + c + ',' + (v * v).toFixed(2) + ')';
         x.fillRect(i, j, 1, 1);
       }
-    });
+    }));
   }
 
   // PS1 Vertex Snapping Shader
@@ -723,17 +802,19 @@
   }
 
   // Construct 3D Dungeon Room
-  scene.add(new THREE.AmbientLight(0x2a2a5a, 1.2));
+  scene.add(new THREE.AmbientLight(0x2a2a5a, 1.25));
   scene.add(mesh(new THREE.BoxGeometry(22, 0.4, 14), mat({ map: floorTex(11, 7) }), 0, -0.2, 0));
   scene.add(mesh(new THREE.BoxGeometry(24, 10, 1), mat({ map: brickTex([62, 56, 92], 11, 12, 5) }), 0, 5, -7.5));
-  const sideTex = brickTex([62, 56, 92], 11, 8, 5);
-  scene.add(mesh(new THREE.BoxGeometry(1, 10, 16), mat({ map: sideTex }), -11.5, 5, 0));
-  scene.add(mesh(new THREE.BoxGeometry(1, 10, 16), mat({ map: sideTex }), 11.5, 5, 0));
+  const sT = brickTex([62, 56, 92], 11, 8, 5);
+  scene.add(mesh(new THREE.BoxGeometry(1, 10, 16), mat({ map: sT }), -11.5, 5, 0));
+  scene.add(mesh(new THREE.BoxGeometry(1, 10, 16), mat({ map: sT }), 11.5, 5, 0));
   scene.add(mesh(new THREE.BoxGeometry(24, 0.5, 16), mat({ map: brickTex([40, 36, 64], 5, 12, 8) }), 0, 10, 0));
 
-  const rune = mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshBasicMaterial({ map: runeTex(), transparent: true, depthWrite: false }), 0, 0.03, 0);
-  rune.rotation.x = -Math.PI / 2;
-  scene.add(rune);
+  [[5.6, 5.8], [3.2, 3.35], [0.8, 0.95]].forEach(r => {
+    const m = mesh(new THREE.RingGeometry(r[0], r[1], 24), new THREE.MeshBasicMaterial({ color: 0x5a4cc4, transparent: true, opacity: 0.7 }), 0, 0.03, 0);
+    m.rotation.x = -Math.PI / 2;
+    scene.add(m);
+  });
 
   // Animated Torch Braziers
   const flames = [], braziers = [];
@@ -749,62 +830,64 @@
   });
 
   // Particle Emitter System
-  function Emitter(n, size) {
-    this.n = n; this.i = 0;
-    this.pos = new Float32Array(n * 3);
-    this.col = new Float32Array(n * 3);
-    this.bc = new Float32Array(n * 3);
-    this.vel = new Float32Array(n * 3);
-    this.life = new Float32Array(n);
-    this.max = new Float32Array(n);
-    for (let k = 0; k < n; k++) this.pos[k * 3 + 1] = -50;
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
-    g.setAttribute('color', new THREE.BufferAttribute(this.col, 3));
-    this.pts = new THREE.Points(g, new THREE.PointsMaterial({ size: size, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
-    this.pts.frustumCulled = false;
-    scene.add(this.pts);
-  }
-  Emitter.prototype.emit = function(x, y, z, vx, vy, vz, life, c) {
-    const k = this.i++ % this.n, j = k * 3;
-    this.pos[j] = x; this.pos[j + 1] = y; this.pos[j + 2] = z;
-    this.vel[j] = vx; this.vel[j + 1] = vy; this.vel[j + 2] = vz;
-    this.life[k] = life; this.max[k] = life;
-    this.bc[j] = c[0]; this.bc[j + 1] = c[1]; this.bc[j + 2] = c[2];
-  };
-  Emitter.prototype.update = function(dt, g) {
-    for (let k = 0; k < this.n; k++) {
-      const j = k * 3;
-      if (this.life[k] > 0) {
-        this.life[k] -= dt;
-        this.pos[j] += this.vel[j] * dt;
-        this.pos[j + 1] += this.vel[j + 1] * dt;
-        this.pos[j + 2] += this.vel[j + 2] * dt;
-        this.vel[j + 1] += g * dt;
-        const f = Math.max(0, this.life[k] / this.max[k]);
-        this.col[j] = this.bc[j] * f;
-        this.col[j + 1] = this.bc[j + 1] * f;
-        this.col[j + 2] = this.bc[j + 2] * f;
-      } else {
-        this.col[j] = this.col[j + 1] = this.col[j + 2] = 0;
-      }
+  class Em {
+    constructor(n, sz) {
+      this.n = n; this.i = 0;
+      this.p = new Float32Array(n * 3);
+      this.c = new Float32Array(n * 3);
+      this.b = new Float32Array(n * 3);
+      this.v = new Float32Array(n * 3);
+      this.l = new Float32Array(n);
+      this.m = new Float32Array(n);
+      for (let k = 0; k < n; k++) this.p[k * 3 + 1] = -50;
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(this.p, 3));
+      g.setAttribute('color', new THREE.BufferAttribute(this.c, 3));
+      this.o = new THREE.Points(g, new THREE.PointsMaterial({ size: sz, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
+      this.o.frustumCulled = false;
+      scene.add(this.o);
     }
-    this.pts.geometry.attributes.position.needsUpdate = true;
-    this.pts.geometry.attributes.color.needsUpdate = true;
-  };
+    emit(x, y, z, vx, vy, vz, life, c) {
+      const k = this.i++ % this.n, j = k * 3;
+      this.p[j] = x; this.p[j + 1] = y; this.p[j + 2] = z;
+      this.v[j] = vx; this.v[j + 1] = vy; this.v[j + 2] = vz;
+      this.l[k] = life; this.m[k] = life;
+      this.b[j] = c[0]; this.b[j + 1] = c[1]; this.b[j + 2] = c[2];
+    }
+    up(dt, g) {
+      for (let k = 0; k < this.n; k++) {
+        const j = k * 3;
+        if (this.l[k] > 0) {
+          this.l[k] -= dt;
+          for (let a = 0; a < 3; a++) this.p[j + a] += this.v[j + a] * dt;
+          this.v[j + 1] += g * dt;
+          const f = Math.max(0, this.l[k] / this.m[k]);
+          for (let a = 0; a < 3; a++) this.c[j + a] = this.b[j + a] * f;
+        } else {
+          this.c[j] = this.c[j + 1] = this.c[j + 2] = 0;
+        }
+      }
+      this.o.geometry.attributes.position.needsUpdate = true;
+      this.o.geometry.attributes.color.needsUpdate = true;
+    }
+  }
 
-  const trail = new Emitter(200, 0.32);
-  const burst = new Emitter(120, 0.35);
-  const embers = new Emitter(60, 0.2);
-  const hitFlash = new THREE.PointLight(0xfff2c8, 0, 16);
-  scene.add(hitFlash);
+  const S = new Em(320, 0.22);
+  const M = new Em(260, 0.42);
+  const flashL = new THREE.PointLight(0xffffff, 0, 16);
+  scene.add(flashL);
 
-  // ─── 2. PROCEDURAL 3D MAGE BUILDER (Miziziziz Retro Style) ───
+  // Particle color palettes
+  const CY = [0.35, 0.84, 0.91], GD = [0.95, 0.62, 0.22], WH = [1, 0.95, 0.8], YL = [1, 0.92, 0.35];
+  const BR = [0.55, 0.4, 0.25], GR = [0.55, 0.55, 0.6], VI = [0.62, 0.22, 1], MG = [0.9, 0.3, 0.9];
+  const OR = [1, 0.45, 0.1], RD = [0.9, 0.2, 0.1], IC = [0.7, 0.95, 1];
+
+  // ─── 2. PROCEDURAL 3D MAGE BUILDER ───
   function create3DMage(classKey, seed) {
     const cfg = window.CLASSES[classKey] || window.CLASSES.fire;
     const g = new THREE.Group();
     const cloth = clothTex(cfg.robe, seed);
-    const cloak = clothTex([cfg.robe[0] * 0.55, cfg.robe[1] * 0.55, cfg.robe[2] * 0.6], seed + 1);
+    const cloak = clothTex(cfg.robe.map(v => v * 0.55), seed + 1);
     const tr = clothTex(cfg.trim, seed + 2);
     const hc = clothTex(cfg.hood, seed + 3);
 
@@ -864,8 +947,6 @@
 
   let ME3D = create3DMage('fire', 31);
   let OP3D = create3DMage('frost', 57);
-  ME3D.root.position.set(-4.5, 0, 0);
-  OP3D.root.position.set(4.5, 0, 0);
   scene.add(ME3D.root); scene.add(OP3D.root);
 
   function rebuildMages(myClass, oppClass) {
@@ -873,60 +954,301 @@
     scene.remove(OP3D.root);
     ME3D = create3DMage(myClass, 31);
     OP3D = create3DMage(oppClass, 57);
-    ME3D.root.position.set(-4.5, 0, 0);
-    OP3D.root.position.set(4.5, 0, 0);
     scene.add(ME3D.root);
     scene.add(OP3D.root);
   }
 
-  // 3D Active Projectiles
-  const projs = [];
-  function spawn3DProjectile(spellId, fromX, fromZ, toX, toZ) {
-    const spell = window.SPELLS[spellId];
-    if (!spell) return;
-
-    let colHex = 0xf97316, glowStr = '249, 115, 22';
-    if (spell.element === 'frost') { colHex = 0x5ad6e8; glowStr = '90, 214, 232'; }
-    else if (spell.element === 'lightning') { colHex = 0xfacc15; glowStr = '250, 204, 21'; }
-    else if (spell.element === 'earth') { colHex = 0x84cc16; glowStr = '132, 204, 22'; }
-    else if (spell.element === 'dark') { colHex = 0xa855f7; glowStr = '168, 85, 247'; }
-
-    const isUlt = spell.cost === 10;
-    const geom = isUlt ? new THREE.IcosahedronGeometry(0.7, 0) : new THREE.OctahedronGeometry(0.35);
-    const m = mesh(geom, mat({ color: colHex, emissive: colHex }));
-    const sp = glowSprite(glowStr, isUlt ? 4.5 : 2.5);
-    m.add(sp);
-
-    m.position.set(fromX, 3.2, fromZ);
+  // ─── 3. DISTINCT 3D ANIMATION EFFECTS FOR EACH SPELL ───
+  let act = [];
+  const after = (t, f) => { let e = 0; act.push(dt => { e += dt; if (e >= t) { f(); return false; } return true; }); };
+  const timed = (d, f) => { let e = 0; act.push(dt => { e += dt; f(e, dt); return e < d; }); };
+  const ground = B => new V(B.x, 0.1, B.z);
+  const ring = (x, y, z, hx, sc, dur, flat) => {
+    const m = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 16), new THREE.MeshBasicMaterial({ color: hx, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    m.position.set(x, y, z);
+    if (flat) m.rotation.x = -Math.PI / 2;
     scene.add(m);
-
-    const dx = toX - fromX, dz = toZ - fromZ;
-    const dist = Math.hypot(dx, dz) || 1;
-    const speed = isUlt ? 10 : 16;
-
-    projs.push({
-      mesh: m,
-      x: fromX, z: fromZ,
-      dx: (dx / dist) * speed,
-      dz: (dz / dist) * speed,
-      targetX: toX, targetZ: toZ,
-      col: spell.element === 'frost' ? [0.35, 0.84, 0.91] : (spell.element === 'dark' ? [0.65, 0.33, 0.96] : [0.97, 0.45, 0.08]),
-      life: 0.8
+    let e = 0;
+    act.push(dt => {
+      e += dt; const k = Math.min(1, e / dur);
+      m.scale.setScalar(0.2 + k * sc);
+      m.material.opacity = 1 - k;
+      if (!flat) m.lookAt(camera.position);
+      if (k >= 1) { scene.remove(m); return false; }
+      return true;
     });
-  }
+  };
+  const bx = (E, p, n, sp, cols, up, life) => {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * 6.283, b = Math.random() * 3.14 - 1.57, s = rnd(0.3, 1) * sp;
+      E.emit(p.x, p.y, p.z, Math.cos(a) * Math.cos(b) * s, Math.sin(b) * s + (up || 0), Math.sin(a) * Math.cos(b) * s, life || rnd(0.5, 1), cols[i % cols.length]);
+    }
+  };
+  const fly = (m, a, b, T, arc, tick, done) => {
+    m.position.copy(a);
+    m.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+    scene.add(m);
+    let e = 0;
+    act.push(dt => {
+      e += dt; const k = Math.min(1, e / T);
+      m.position.lerpVectors(a, b, k);
+      m.position.y += Math.sin(k * Math.PI) * arc;
+      if (tick) tick(m, k, dt);
+      if (k >= 1) { scene.remove(m); if (done) done(); return false; }
+      return true;
+    });
+  };
+  const jag = (a, b, n, amp) => {
+    const p = [];
+    for (let i = 0; i <= n; i++) {
+      const k = i / n, j = i && i < n ? amp : 0;
+      p.push(new V(a.x + (b.x - a.x) * k + rnd(-j, j), a.y + (b.y - a.y) * k + rnd(-j, j), a.z + (b.z - a.z) * k + rnd(-j, j)));
+    }
+    return p;
+  };
+  const lbolt = (a, b, hx, dur, amp, n) => {
+    const g = new THREE.Group();
+    scene.add(g);
+    let e = 0, t = 1;
+    const build = () => {
+      while (g.children.length) { g.children[0].geometry.dispose(); g.remove(g.children[0]); }
+      for (let o = 0; o < 3; o++) {
+        const p = jag(a, b, n, amp);
+        p.forEach(v => { v.x += o * 0.07; v.z += o * 0.07; });
+        g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p), new THREE.LineBasicMaterial({ color: o ? hx : 0xffffff, transparent: true, blending: THREE.AdditiveBlending })));
+      }
+    };
+    act.push(dt => {
+      e += dt; t += dt;
+      if (t > 0.04) { t = 0; build(); }
+      if (e >= dur) { scene.remove(g); return false; }
+      return true;
+    });
+  };
+  const spikes = (p, n, hx, h, r, geo) => {
+    for (let i = 0; i < n; i++) {
+      const a = i / n * 6.283 + rnd(0, 0.5), d = rnd(0.4, r);
+      const m = mesh(geo, mat({ color: hx, emissive: hx >> 1 & 0x7f7f7f }), p.x + Math.cos(a) * d, 0, p.z + Math.sin(a) * d);
+      const H2 = h * rnd(0.7, 1.2);
+      m.scale.set(1, 0.01, 1);
+      m.rotation.set(rnd(-0.25, 0.25), 0, rnd(-0.25, 0.25));
+      scene.add(m);
+      let e = 0;
+      act.push(dt => {
+        e += dt;
+        const k = e < 0.15 ? e / 0.15 : e < 0.9 ? 1 : Math.max(0, 1 - (e - 0.9) / 0.25);
+        m.scale.set(1, Math.max(0.01, k * H2), 1);
+        m.position.y = k * H2 / 2;
+        if (e > 1.15) { scene.remove(m); return false; }
+        return true;
+      });
+    }
+  };
+  const orb = (geo, hx, sc) => {
+    const m = mesh(geo, mat({ color: hx, emissive: hx }));
+    if (sc) m.scale.set(sc[0], sc[1], sc[2]);
+    return m;
+  };
+  const floatText = (s, c, p) => {
+    const v = p.clone().project(camera);
+    const e = document.createElement('span');
+    e.className = 'ft';
+    e.textContent = s;
+    e.style.cssText = `left:${(v.x + 1) * 50}%;top:${(1 - v.y) * 50}%;color:${c}`;
+    document.getElementById('flContainer').appendChild(e);
+    setTimeout(() => e.remove(), 1300);
+  };
 
-  function triggerHitBoom(x, z, element) {
-    hitFlash.position.set(x, 3, z);
-    hitFlash.intensity = 5;
-    for (let k = 0; k < 25; k++) {
-      const a = Math.random() * 6.283, sp = 2 + Math.random() * 4;
-      burst.emit(x, 2.5, z, Math.cos(a) * sp, Math.sin(a) * sp + 1.2, (Math.random() - 0.5) * 3, 0.6,
-        element === 'frost' ? [0.35, 0.84, 0.91] : (element === 'dark' ? [0.65, 0.33, 0.96] : [0.97, 0.45, 0.08])
-      );
+  // Launch Distinct Spell 3D Visual Animations
+  function executeSpell3D(spellId, casterPos, targetPos, isCasterMe) {
+    const A = new V(casterPos.x, 3.2, casterPos.z);
+    const B = new V(targetPos.x, 2.3, targetPos.z);
+    const G = ground(B);
+
+    if (spellId === 'fire_spark') {
+      for (let i = 0; i < 3; i++) {
+        after(i * 0.08, () => {
+          const a = A.clone(), b = B.clone();
+          a.y += rnd(-0.2, 0.2); b.z += rnd(-0.5, 0.5);
+          fly(orb(new THREE.IcosahedronGeometry(0.14, 0), 0xffb040), a, b, 0.26, 0.1,
+            m => S.emit(m.position.x, m.position.y, m.position.z, rnd(-1, 1), rnd(0, 1.5), rnd(-1, 1), 0.35, i % 2 ? OR : YL),
+            () => { bx(S, b, 12, 3.5, [OR, YL], 1, 0.5); flashL.intensity = 3; }
+          );
+        });
+      }
+    } else if (spellId === 'fireball') {
+      const g = new THREE.Group();
+      g.add(orb(new THREE.IcosahedronGeometry(0.5, 0), 0xff6a1a));
+      g.add(orb(new THREE.IcosahedronGeometry(0.28, 0), 0xffe080));
+      g.add(glowSprite('255,120,40', 3.6));
+      fly(g, A, B, 0.7, 0.9, (m, k, dt) => {
+        g.children[0].rotation.x += dt * 7;
+        for (let i = 0; i < 4; i++) M.emit(m.position.x, m.position.y, m.position.z, rnd(-0.6, 0.6), rnd(0.5, 2), rnd(-0.6, 0.6), 0.55, i % 2 ? OR : RD);
+      }, () => {
+        ring(G.x, 0.1, G.z, 0xff7a20, 6, 0.5, 1);
+        bx(M, B, 45, 5, [OR, RD, YL], 2, 0.9);
+        shakeVal = 0.3;
+      });
+    } else if (spellId === 'inferno_nova') {
+      const P = new V(B.x, 6, B.z), g = new THREE.Group();
+      g.add(orb(new THREE.IcosahedronGeometry(1.1, 1), 0xffd878));
+      g.add(glowSprite('255,170,60', 7));
+      g.position.copy(P); g.scale.setScalar(0.1);
+      scene.add(g);
+      timed(1.1, e => {
+        g.scale.setScalar(0.1 + Math.min(1, e / 1.1) * 1.6 + Math.sin(e * 30) * 0.05);
+        for (let i = 0; i < 4; i++) {
+          const a = Math.random() * 6.283, r = rnd(3, 5);
+          M.emit(P.x + Math.cos(a) * r, P.y + rnd(-2, 2), P.z + Math.sin(a) * r, -Math.cos(a) * r * 1.4, 0, -Math.sin(a) * r * 1.4, 0.7, i % 2 ? OR : YL);
+        }
+      });
+      after(1.1, () => {
+        scene.remove(g);
+        ring(G.x, 0.1, G.z, 0xff7a20, 18, 0.8, 1);
+        ring(G.x, 0.1, G.z, 0xffe080, 12, 0.6, 1);
+        bx(M, P, 90, 9, [OR, YL, WH, RD], 0, 1.1);
+        shakeVal = 0.6;
+      });
+    } else if (spellId === 'ice_shard') {
+      for (let i = 0; i < 3; i++) {
+        after(i * 0.06, () => {
+          const a = A.clone(), b = B.clone();
+          a.y += (i - 1) * 0.25; b.y += (i - 1) * 0.3;
+          fly(orb(new THREE.OctahedronGeometry(0.16), 0x9ff0ff, [3, 0.5, 0.5]), a, b, 0.22, 0,
+            m => S.emit(m.position.x, m.position.y, m.position.z, rnd(-0.5, 0.5), rnd(-0.5, 0.5), rnd(-0.5, 0.5), 0.4, i % 2 ? WH : IC),
+            () => { bx(S, b, 14, 4, [IC, WH], 1, 0.6); flashL.intensity = 3; }
+          );
+        });
+      }
+    } else if (spellId === 'blizzard_spear') {
+      const g = new THREE.Group(), c = mesh(new THREE.ConeGeometry(0.22, 2.4, 6), mat({ color: 0xbff6ff, emissive: 0x7fe0ff }));
+      c.rotation.z = -Math.PI / 2; g.add(c); g.add(glowSprite('120,220,255', 3));
+      fly(g, A, B, 0.5, 0.2, (m, k) => {
+        for (let i = 0; i < 3; i++) {
+          const a = k * 40 + i * 2.1;
+          M.emit(m.position.x - i * 0.3, m.position.y + Math.sin(a) * 0.55, m.position.z + Math.cos(a) * 0.55, 0, 0, 0, 0.45, i ? IC : WH);
+        }
+      }, () => {
+        spikes(G, 8, 0x9ff0ff, 2.6, 2, new THREE.ConeGeometry(0.3, 1, 5));
+        ring(G.x, 0.1, G.z, 0x9ff0ff, 6, 0.5, 1);
+        bx(S, B, 30, 5, [IC, WH], 1, 0.8);
+        shakeVal = 0.3;
+      });
+    } else if (spellId === 'absolute_zero') {
+      ring(A.x, 0.1, A.z, 0x9ff0ff, 24, 0.9, 1);
+      after(0.35, () => {
+        const c = mesh(new THREE.OctahedronGeometry(1.2), mat({ color: 0xbff6ff, emissive: 0x5ac0e8 }), B.x, 2.1, B.z);
+        scene.add(c);
+        timed(1.3, e => {
+          const k = Math.min(1, e / 0.25);
+          c.scale.set(1.2 * k, 2.6 * k, 1.2 * k);
+          M.emit(B.x + rnd(-1, 1), rnd(0.2, 4), B.z + rnd(-1, 1), 0, rnd(0.2, 1), 0, 0.8, WH);
+        });
+        after(1.3, () => {
+          scene.remove(c);
+          bx(M, B, 70, 6, [IC, WH], 1, 1);
+          ring(G.x, 0.1, G.z, 0xffffff, 8, 0.5, 1);
+          shakeVal = 0.4;
+        });
+      });
+    } else if (spellId === 'zap') {
+      lbolt(A, B, 0xffee50, 0.18, 0.4, 8);
+      bx(S, B, 10, 4, [YL, WH], 1, 0.4);
+      flashL.intensity = 4;
+    } else if (spellId === 'thunder_strike') {
+      ring(G.x, 0.08, G.z, 0xffe040, 2.4, 0.5, 1);
+      after(0.3, () => {
+        lbolt(new V(B.x, 12, B.z), G, 0xffee50, 0.35, 0.8, 12);
+        bx(M, new V(B.x, 0.5, B.z), 40, 6, [YL, WH], 2, 0.7);
+        ring(G.x, 0.1, G.z, 0xfff080, 7, 0.5, 1);
+        shakeVal = 0.4;
+      });
+    } else if (spellId === 'judgment_bolt') {
+      [0, 0.14, 0.28].forEach(d => after(1 + d, () => {
+        lbolt(new V(B.x + rnd(-1.4, 1.4), 13, B.z + rnd(-1, 1)), new V(B.x + rnd(-0.6, 0.6), 0.1, B.z), 0xffee50, 0.3, 1, 14);
+        shakeVal = 0.4;
+      }));
+      after(1.3, () => {
+        const p = mesh(new THREE.CylinderGeometry(0.8, 0.8, 13, 8), new THREE.MeshBasicMaterial({ color: 0xfff6c0, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }), B.x, 6.5, B.z);
+        scene.add(p);
+        timed(0.6, e => { p.material.opacity = 1 - e / 0.6; if (e > 0.55) scene.remove(p); });
+        ring(G.x, 0.1, G.z, 0xfff080, 16, 0.7, 1);
+        bx(M, new V(B.x, 0.5, B.z), 90, 9, [YL, WH], 3, 1);
+        shakeVal = 0.7;
+      });
+    } else if (spellId === 'pebble_shot') {
+      for (let i = 0; i < 3; i++) {
+        after(i * 0.1, () => {
+          const a = A.clone(), b = B.clone();
+          b.z += (i - 1) * 0.5;
+          fly(mesh(new THREE.DodecahedronGeometry(0.17), mat({ color: 0x8a7a62 })), a, b, 0.45, 1.1 + i * 0.4, (m, k, dt) => {
+            m.rotation.x += dt * 9; m.rotation.z += dt * 7;
+          }, () => {
+            bx(M, b, 8, 2.5, [BR], 1, 0.7);
+            bx(S, b, 6, 3, [GR], 2, 0.6);
+          });
+        });
+      }
+    } else if (spellId === 'boulder_smash') {
+      fly(mesh(new THREE.DodecahedronGeometry(0.75), mat({ color: 0x7a6a55 })), A, B, 0.9, 3, (m, k, dt) => {
+        m.rotation.x += dt * 5; m.rotation.z += dt * 3;
+        S.emit(m.position.x, m.position.y, m.position.z, rnd(-0.5, 0.5), rnd(-1, 0), rnd(-0.5, 0.5), 0.5, BR);
+      }, () => {
+        ring(G.x, 0.1, G.z, 0xb08a5a, 7, 0.55, 1);
+        bx(M, new V(B.x, 0.3, B.z), 40, 5, [BR, GR], 2, 0.9);
+        shakeVal = 0.4;
+      });
+    } else if (spellId === 'cataclysm') {
+      spikes(G, 11, 0x7a6a58, 4.4, 3, new THREE.BoxGeometry(0.8, 1, 0.8));
+      for (let i = 0; i < 70; i++) M.emit(B.x + rnd(-3, 3), 0.2, B.z + rnd(-3, 3), rnd(-1, 1), rnd(1, 4), rnd(-1, 1), rnd(0.7, 1.4), i % 2 ? BR : GR);
+      ring(G.x, 0.1, G.z, 0xb08a5a, 18, 0.8, 1);
+      shakeVal = 0.7;
+    } else if (spellId === 'shadow_dart') {
+      fly(orb(new THREE.OctahedronGeometry(0.17), 0x8a30ff, [3.2, 0.6, 0.6]), A, B, 0.32, 0, (m, k) => {
+        m.position.z += Math.sin(k * 18) * 0.45 * (1 - k);
+        M.emit(m.position.x, m.position.y, m.position.z, rnd(-0.3, 0.3), rnd(-0.3, 0.3), rnd(-0.3, 0.3), 0.45, VI);
+      }, () => {
+        bx(S, B, 14, 3.5, [VI, MG], 1, 0.6);
+        ring(B.x, B.y, B.z, 0x9a40ff, 2.5, 0.3);
+      });
+    } else if (spellId === 'soul_drain') {
+      ring(B.x, B.y, B.z, 0xb060ff, 4, 0.6);
+      ring(A.x, 2.2, A.z, 0xb060ff, 3, 0.6);
+      timed(1.2, () => {
+        for (let i = 0; i < 5; i++) {
+          const a = Math.random() * 6.283;
+          S.emit(B.x, B.y + rnd(-1, 1), B.z + rnd(-0.6, 0.6), (A.x - B.x) * 1.5, Math.sin(a) * 2, Math.cos(a) * 2, 0.9, i % 2 ? VI : WH);
+        }
+      });
+    } else if (spellId === 'abyssal_void') {
+      const P = new V(B.x, 4.2, B.z), g = new THREE.Group(), t = mesh(new THREE.TorusGeometry(1.5, 0.18, 4, 12), new THREE.MeshBasicMaterial({ color: 0xaa40ff }));
+      t.rotation.x = 1.2;
+      g.add(mesh(new THREE.SphereGeometry(0.9, 8, 6), new THREE.MeshBasicMaterial({ color: 0 })));
+      g.add(t); g.add(glowSprite('150,60,255', 6));
+      g.position.copy(P); g.scale.setScalar(0.05);
+      scene.add(g);
+      timed(1.8, (e, dt) => {
+        g.scale.setScalar(0.05 + Math.min(1, e / 0.6) * 1.5);
+        t.rotation.z += dt * 6;
+        for (let i = 0; i < 5; i++) {
+          const a = Math.random() * 6.283, r = rnd(3, 6);
+          M.emit(P.x + Math.cos(a) * r, P.y + rnd(-1.5, 1.5), P.z + Math.sin(a) * r, -Math.cos(a) * r * 1.2, 0, -Math.sin(a) * r * 1.2, 0.9, i % 2 ? VI : MG);
+        }
+      });
+      after(1.8, () => {
+        scene.remove(g);
+        bx(M, P, 70, 7, [VI, MG, WH], 0, 1);
+        ring(P.x, P.y, P.z, 0xaa40ff, 9, 0.5);
+        shakeVal = 0.5;
+      });
+    } else if (spellId === 'heal') {
+      ring(A.x, 0.1, A.z, 0x4ade80, 5, 0.8, 1);
+      bx(S, A, 30, 3, [WH, [0.3, 0.9, 0.4]], 1.5, 0.8);
+      floatText('+20 HP', '#4ade80', A);
     }
   }
 
-  // ─── 3. UI, MODALS & LOBBY CONTROLLER ───
+  // ─── 4. UI, LOBBY & MOVEMENT CONTROLS ───
   const gameHud = document.getElementById('gameHud');
   const lobbyModal = document.getElementById('lobbyModal');
   const waitingModal = document.getElementById('waitingModal');
@@ -955,6 +1277,31 @@
   const disconnectBanner = document.getElementById('disconnectBanner');
   const disconnectSec = document.getElementById('disconnectSec');
   const blindnessOverlay = document.getElementById('blindnessOverlay');
+  const youWindupBox = document.getElementById('youWindupBox');
+  const youWindupFill = document.getElementById('youWindupFill');
+  const youWindupLabel = document.getElementById('youWindupLabel');
+  const oppWindupBox = document.getElementById('oppWindupBox');
+  const oppWindupFill = document.getElementById('oppWindupFill');
+  const oppWindupLabel = document.getElementById('oppWindupLabel');
+
+  // Keyboard Movement Event Listeners
+  window.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    keys[k] = true;
+  });
+  window.addEventListener('keyup', e => {
+    const k = e.key.toLowerCase();
+    keys[k] = false;
+  });
+
+  // Touch / Pointer D-Pad
+  document.querySelectorAll('.db').forEach(b => {
+    const k = b.dataset.k;
+    b.addEventListener('pointerdown', e => { e.preventDefault(); keys[k] = true; });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => {
+      b.addEventListener(ev, () => { keys[k] = false; });
+    });
+  });
 
   // Class Selection in Lobby
   classSelectorGrid.querySelectorAll('.class-pick-btn').forEach(btn => {
@@ -967,7 +1314,6 @@
     });
   });
 
-  // Check URL Room Param
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('room')) {
     roomCodeInput.value = urlParams.get('room').toUpperCase();
@@ -978,6 +1324,7 @@
     socket.emit('create_room', { name, class: selectedClass }, (res) => {
       if (res && res.ok) {
         currentRoom = res.code;
+        isHost = true;
         waitingCodeDisplay.textContent = res.code;
         sessionStorage.setItem('md_token', res.token);
         sessionStorage.setItem('md_room', res.code);
@@ -998,6 +1345,7 @@
         alert(res.error || 'Failed to join room');
       } else {
         currentRoom = res.code;
+        isHost = false;
         sessionStorage.setItem('md_token', res.token);
         sessionStorage.setItem('md_room', res.code);
         waitingCodeDisplay.textContent = res.code;
@@ -1026,16 +1374,8 @@
   btnOpenRules.addEventListener('click', () => rulesModal.classList.add('show'));
   btnCloseRules.addEventListener('click', () => rulesModal.classList.remove('show'));
 
-  // First time auto-rules popup (Competition req #2: read in < 45s)
-  if (!localStorage.getItem('md_seen_rules_3d')) {
-    rulesModal.classList.add('show');
-    localStorage.setItem('md_seen_rules_3d', '1');
-  }
-
-  // ─── 4. MULTIPLAYER SOCKET EVENTS ───
-  socket.on('connect', () => {
-    myId = socket.id;
-  });
+  // ─── 5. MULTIPLAYER SOCKET EVENTS ───
+  socket.on('connect', () => { myId = socket.id; });
 
   socket.on('match_start', (data) => {
     lobbyModal.classList.remove('show');
@@ -1043,11 +1383,18 @@
     endModal.classList.remove('show');
     gameHud.style.display = 'flex';
 
-    const you = data.p1.id === myId ? data.p1 : data.p2;
-    const opp = data.p1.id === myId ? data.p2 : data.p1;
+    isHost = (data.p1.id === myId);
+    const you = isHost ? data.p1 : data.p2;
+    const opp = isHost ? data.p2 : data.p1;
     opponentId = opp.id;
     myMageClass = you.class || 'fire';
     oppMageClass = opp.class || 'frost';
+
+    // Start positions: Host on left (-5), Guest on right (+5)
+    myPos.x = isHost ? -5 : 5;
+    myPos.z = 0;
+    oppPos.x = isHost ? 5 : -5;
+    oppPos.z = 0;
 
     document.getElementById('youHudName').textContent = `YOU (${window.CLASSES[myMageClass].name})`;
     document.getElementById('oppHudName').textContent = `${opp.name} (${window.CLASSES[oppMageClass].name})`;
@@ -1083,7 +1430,12 @@
     setTimeout(() => { spellFlash.style.display = 'none'; }, 900);
   }
 
-  // Game events
+  // Receive opponent movement
+  socket.on('opponent_moved', data => {
+    oppPos.x = data.x;
+    oppPos.z = data.z;
+  });
+
   socket.on('cast_started', (ev) => {
     const spell = window.SPELLS[ev.spell];
     const isYou = ev.caster === myId;
@@ -1093,19 +1445,23 @@
 
   socket.on('hit', (ev) => {
     const isTargetYou = ev.target === myId;
-    const fromX = isTargetYou ? 4.5 : -4.5;
-    const toX = isTargetYou ? -4.5 : 4.5;
-    spawn3DProjectile(ev.spell || 'fire_spark', fromX, 0, toX, 0);
+    const casterPos = isTargetYou ? oppPos : myPos;
+    const targetPos = isTargetYou ? myPos : oppPos;
+    executeSpell3D(ev.spell || 'fire_spark', casterPos, targetPos, !isTargetYou);
 
-    setTimeout(() => {
-      triggerHitBoom(toX, 0, ev.spell ? window.SPELLS[ev.spell].element : 'fire');
-      shakeScreen(0.25);
-    }, 280);
+    if (ev.damage > 0) {
+      floatText(`-${ev.damage}`, '#ef4444', new V(targetPos.x, 3.5, targetPos.z));
+    }
   });
 
   socket.on('block_started', (ev) => {
-    if (ev.player === myId) ME3D.shield.visible = true;
-    else OP3D.shield.visible = true;
+    if (ev.player === myId) {
+      ME3D.shield.visible = true;
+      floatText('SHIELD!', '#38bdf8', new V(myPos.x, 3.5, myPos.z));
+    } else {
+      OP3D.shield.visible = true;
+      floatText('SHIELD!', '#38bdf8', new V(oppPos.x, 3.5, oppPos.z));
+    }
   });
 
   socket.on('match_end', (ev) => {
@@ -1157,24 +1513,43 @@
     flashSpellName('RIVAL RECONNECTED!');
   });
 
-  // State Snapshot Sync
+  // State Snapshot Sync (HP, Mana, Live Wind-Up Bars, Cooldowns)
   socket.on('state_snapshot', (data) => {
     if (!myId || !opponentId) return;
+    const now = Date.now();
     const you = data.snapshot[myId];
     const opp = data.snapshot[opponentId];
-    if (you) updateHUDPlayer('you', you);
-    if (opp) updateHUDPlayer('opp', opp);
+    if (you) updateHUDPlayer('you', you, now);
+    if (opp) updateHUDPlayer('opp', opp, now);
   });
 
-  function updateHUDPlayer(prefix, p) {
+  function updateHUDPlayer(prefix, p, now) {
     document.getElementById(`${prefix}HpFill`).style.width = `${Math.max(0, p.hp)}%`;
     document.getElementById(`${prefix}HpVal`).textContent = `${Math.round(p.hp)} / 100`;
     document.getElementById(`${prefix}ManaFill`).style.width = `${(p.mana / 10) * 100}%`;
     document.getElementById(`${prefix}ManaVal`).textContent = `${p.mana.toFixed(1)} / 10`;
 
-    // 3D Visuals
+    // 3D Shields
     const target3D = prefix === 'you' ? ME3D : OP3D;
     target3D.shield.visible = p.blockActive;
+
+    // Live Wind-up Progress Bars
+    const windupBox = prefix === 'you' ? youWindupBox : oppWindupBox;
+    const windupFill = prefix === 'you' ? youWindupFill : oppWindupFill;
+    const windupLabel = prefix === 'you' ? youWindupLabel : oppWindupLabel;
+
+    if (p.windUp && p.windUp.endsAt > now) {
+      const spell = window.SPELLS[p.windUp.spell];
+      const total = spell ? spell.windUp : 2000;
+      const remaining = p.windUp.endsAt - now;
+      const progress = Math.max(0, Math.min(1, 1 - (remaining / total)));
+      windupBox.style.display = 'block';
+      windupFill.style.width = `${progress * 100}%`;
+      windupLabel.textContent = `⚡ ${prefix === 'you' ? 'YOU' : 'RIVAL'} CHARGING ${spell ? spell.name.toUpperCase() : 'SPELL'}...`;
+    } else {
+      windupBox.style.display = 'none';
+      windupFill.style.width = '0%';
+    }
 
     // Status Tags
     const tagsDiv = document.getElementById(`${prefix}StatusTags`);
@@ -1212,7 +1587,7 @@
     });
   }
 
-  // ─── 5. VOICE RECOGNITION CONTROLLER ───
+  // ─── 6. VOICE RECOGNITION CONTROLLER ───
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let voiceOn = false, rec = null;
 
@@ -1292,12 +1667,11 @@
     typedInput.value = '';
   });
 
-  // ─── 6. 3D RENDER & ANIMATION LOOP ───
+  // ─── 7. 3D RENDER, MOVEMENT & THIRD-PERSON CAMERA LOOP ───
   let lastTime = performance.now() / 1000;
   let clock = 0;
   let shakeVal = 0;
-
-  function shakeScreen(amount) { shakeVal = amount; }
+  let lastMoveSent = 0;
 
   function render3D() {
     requestAnimationFrame(render3D);
@@ -1306,6 +1680,42 @@
     lastTime = now;
     clock += dt;
 
+    // ─── Player Movement Logic (WASD / D-Pad) ───
+    if (gameHud.style.display !== 'none') {
+      let mx = 0, mz = 0;
+      if (keys['w'] || keys['arrowup']) mx += isHost ? 1 : -1;
+      if (keys['s'] || keys['arrowdown']) mx += isHost ? -1 : 1;
+      if (keys['a'] || keys['arrowleft']) mz += isHost ? -1 : 1;
+      if (keys['d'] || keys['arrowright']) mz += isHost ? 1 : -1;
+
+      const len = Math.hypot(mx, mz);
+      if (len > 0) {
+        const speed = 5.5;
+        myPos.x += (mx / len) * speed * dt;
+        myPos.z += (mz / len) * speed * dt;
+        // Keep within arena boundaries
+        myPos.x = Math.max(-9.5, Math.min(9.5, myPos.x));
+        myPos.z = Math.max(-5.5, Math.min(5.5, myPos.z));
+
+        // Sync movement to server every 40ms
+        if (now - lastMoveSent > 0.04) {
+          lastMoveSent = now;
+          socket.emit('player_move', { x: myPos.x, z: myPos.z });
+        }
+      }
+    }
+
+    // Update 3D Mages Positions
+    ME3D.root.position.set(myPos.x, 0, myPos.z);
+    OP3D.root.position.set(oppPos.x, 0, oppPos.z);
+
+    // Mages rotate to face each other dynamically as they move
+    const fdx = oppPos.x - myPos.x, fdz = oppPos.z - myPos.z;
+    const myFacing = Math.atan2(-fdz, fdx);
+    const oppFacing = Math.atan2(fdz, -fdx);
+    ME3D.g.rotation.y = myFacing;
+    OP3D.g.rotation.y = oppFacing;
+
     // Torches & Embers
     braziers.forEach((br, i) => {
       const f = 0.5 + 0.5 * Math.sin(clock * 11 + i * 3) * Math.sin(clock * 7.3 + i);
@@ -1313,7 +1723,7 @@
       flames[i][0].scale.set(1, 0.85 + f * 0.35, 1);
       flames[i][1].scale.set(1, 0.8 + f * 0.5, 1);
       if (Math.random() < 0.4) {
-        embers.emit(br.x + (Math.random() - 0.5) * 0.4, 2.1, -3.8 + (Math.random() - 0.5) * 0.3,
+        S.emit(br.x + (Math.random() - 0.5) * 0.4, 2.1, -3.8 + (Math.random() - 0.5) * 0.3,
           (Math.random() - 0.5) * 0.3, 0.8 + Math.random() * 0.8, 0, 1.5, [1, 0.55, 0.2]
         );
       }
@@ -1329,39 +1739,39 @@
     ME3D.g.rotation.z += (ME3D.lean - ME3D.g.rotation.z) * Math.min(1, dt * 10);
     OP3D.g.rotation.z += (-OP3D.lean - OP3D.g.rotation.z) * Math.min(1, dt * 10);
 
-    // Projectiles
-    for (let i = projs.length - 1; i >= 0; i--) {
-      const p = projs[i];
-      p.life -= dt;
-      p.x += p.dx * dt;
-      p.z += p.dz * dt;
-      p.mesh.position.x = p.x;
-      p.mesh.position.z = p.z;
-      p.mesh.rotation.x += dt * 8;
-
-      trail.emit(p.x, 3.2, p.z, -p.dx * 0.2, 0.3, -p.dz * 0.2, 0.35, p.col);
-
-      if (p.life <= 0 || Math.abs(p.x - p.targetX) < 0.8) {
-        scene.remove(p.mesh);
-        projs.splice(i, 1);
-      }
+    // Update Spell 3D animations
+    for (let i = act.length - 1; i >= 0; i--) {
+      if (!act[i](dt)) act.splice(i, 1);
     }
 
     // Particles update
-    trail.update(dt, 0);
-    burst.update(dt, -4);
-    embers.update(dt, 0);
-
-    // Mages face each other: ME (on left) faces right, OP (on right) faces left
-    ME3D.g.rotation.y = Math.PI / 2;
-    OP3D.g.rotation.y = -Math.PI / 2;
+    S.up(dt, -3);
+    M.up(dt, -0.4);
 
     // Hit flash fade & screen shake
-    hitFlash.intensity = Math.max(0, hitFlash.intensity - dt * 12);
+    flashL.intensity = Math.max(0, flashL.intensity - dt * 10);
     shakeVal = Math.max(0, shakeVal - dt * 0.8);
 
-    camera.position.set((Math.random() - 0.5) * shakeVal, 5.2 + (Math.random() - 0.5) * shakeVal, 11);
-    camera.lookAt(0, 1.8, 0);
+    // ─── TRUE THIRD-PERSON CAMERA (Behind Your Character Looking at Opponent) ───
+    if (gameHud.style.display !== 'none') {
+      const forwardX = Math.cos(myFacing), forwardZ = -Math.sin(myFacing);
+      // Camera is positioned behind player with slight elevation & offset
+      const camTargetX = myPos.x - forwardX * 7.5;
+      const camTargetZ = myPos.z - forwardZ * 7.5;
+      const camTargetY = 4.2;
+
+      // Smooth camera interpolation
+      camera.position.x += (camTargetX - camera.position.x) * Math.min(1, dt * 8) + (Math.random() - 0.5) * shakeVal;
+      camera.position.y += (camTargetY - camera.position.y) * Math.min(1, dt * 8) + (Math.random() - 0.5) * shakeVal;
+      camera.position.z += (camTargetZ - camera.position.z) * Math.min(1, dt * 8);
+
+      // Camera looks over player's shoulder toward opponent
+      camera.lookAt(oppPos.x, 2.2, oppPos.z);
+    } else {
+      // Lobby showcase camera
+      camera.position.set(0, 5.0, 11);
+      camera.lookAt(0, 1.8, 0);
+    }
 
     renderer.render(scene, camera);
   }

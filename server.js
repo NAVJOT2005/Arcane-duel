@@ -293,6 +293,19 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Move player in 3D arena
+  socket.on('player_move', (data) => {
+    if (!currentRoomCode) return;
+    const room = rooms.get(currentRoomCode);
+    if (!room || room.state !== 'in_progress' || !data) return;
+    // Broadcast movement directly to opponent
+    socket.to(room.code).emit('opponent_moved', {
+      id: socket.id,
+      x: typeof data.x === 'number' ? Math.max(-10, Math.min(10, data.x)) : 0,
+      z: typeof data.z === 'number' ? Math.max(-6, Math.min(6, data.z)) : 0
+    });
+  });
+
   // Rematch
   socket.on('rematch', () => {
     if (!currentRoomCode) return;
