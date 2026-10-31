@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const { createMatch, tryCast, tick, getSnapshot } = require('./shared/rules');
 const { SPELLS } = require('./shared/spells');
+const { matchSpell } = require('./shared/matcher');
 
 const app = express();
 const server = http.createServer(app);
@@ -195,17 +196,33 @@ io.on('connection', (socket) => {
     const room = rooms.get(currentRoomCode);
     if (!room || room.state !== 'in_progress' || !room.matchState) return;
 
-    const spellId = data && data.spell ? String(data.spell).toLowerCase() : '';
+    let spellId = data && data.spell ? String(data.spell).toLowerCase() : '';
+    // If client sent raw text/incantation instead of direct spell id
+    if (!SPELLS[spellId] && (data.text || data.chant)) {
+      const detected = matchSpell(data.text || data.chant);
+      if (detected) spellId = detected;
+    }
+
+    if (!SPELLS[spellId]) {
+      socket.emit('rejected', {
+        player: socket.id,
+        spell: spellId || data.text || 'unknown',
+        reason: 'unknown_spell',
+        serverTime: Date.now()
+      });
+      return;
+    }
+
     const now = Date.now();
+    const source = data.source || 'tap';
 
     const events = tryCast(room.matchState, socket.id, spellId, now);
     for (const ev of events) {
       ev.serverTime = now;
+      ev.source = source;
       if (ev.type === 'rejected') {
-        // Send rejection only to caster
         socket.emit('rejected', ev);
       } else {
-        // Broadcast game events to room
         io.to(room.code).emit(ev.type, ev);
       }
     }

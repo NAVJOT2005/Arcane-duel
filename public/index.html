@@ -352,17 +352,90 @@
     .lose-text { color: #ef4444; }
     .draw-text { color: #eab308; }
 
-    /* Quick links */
-    .footer-links {
-      margin-top: 10px;
-      font-size: 0.85rem;
-      color: #64748b;
+    /* ─── Voice & Chant Input Section ─── */
+    .incantation-bar {
       display: flex;
-      gap: 14px;
-      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+      padding: 10px 12px;
     }
-    .footer-links a { color: #f97316; text-decoration: none; }
-    .footer-links a:hover { text-decoration: underline; }
+    .chant-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-mic {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 0.85rem;
+      cursor: pointer;
+      background: #dc2626;
+      color: white;
+      transition: all 0.2s;
+    }
+    .btn-mic.listening {
+      background: #16a34a;
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.5);
+      animation: micPulse 1.2s infinite alternate;
+    }
+    @keyframes micPulse {
+      from { transform: scale(0.98); }
+      to { transform: scale(1.03); }
+    }
+    .speech-feedback {
+      flex: 1;
+      font-size: 0.82rem;
+      color: #94a3b8;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: right;
+    }
+    .speech-feedback .highlight {
+      color: #f59e0b;
+      font-weight: 700;
+    }
+    .speech-feedback .matched {
+      color: #22c55e;
+      font-weight: 800;
+    }
+
+    .typed-form {
+      display: flex;
+      gap: 6px;
+    }
+    .typed-form input {
+      flex: 1;
+      background: #090915;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #f8fafc;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .typed-form input:focus {
+      border-color: #f97316;
+    }
+    .typed-form button {
+      padding: 8px 14px;
+      background: #ea580c;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -488,6 +561,22 @@
       <!-- Populated dynamically from SPELLS config -->
     </div>
 
+    <!-- Voice & Typed Incantation Bar -->
+    <div class="incantation-bar" id="incantationSection">
+      <div class="chant-header">
+        <button id="btnVoiceToggle" class="btn-mic">
+          <span id="micIcon">🎤</span> <span id="micStatusText">Voice Cast: OFF</span>
+        </button>
+        <div class="speech-feedback" id="voiceFeedback">
+          Shout spell incantations or type below...
+        </div>
+      </div>
+      <form id="typedCastForm" class="typed-form" onsubmit="return false;">
+        <input type="text" id="typedSpellInput" placeholder='Type "Zap!", "Burn!", "Nope!"...' autocomplete="off" />
+        <button type="submit" id="btnTypedCast">Cast</button>
+      </form>
+    </div>
+
     <!-- Battle Log -->
     <div class="log-box" id="battleLog">
       <div class="log-row log-system">Battle initiated! Cast spells with buttons or voice.</div>
@@ -515,6 +604,7 @@
   <!-- Load dependencies -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/spells.js"></script>
+  <script src="/shared/matcher.js"></script>
 
   <script>
     // ─── Network & Clock Synchronization ───
@@ -962,6 +1052,143 @@
         }
       });
     }
+
+    // ─── Voice Recognition Engine & Typed Fallback ───
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const btnVoiceToggle = document.getElementById('btnVoiceToggle');
+    const micStatusText = document.getElementById('micStatusText');
+    const voiceFeedback = document.getElementById('voiceFeedback');
+    const typedSpellInput = document.getElementById('typedSpellInput');
+    const typedCastForm = document.getElementById('typedCastForm');
+
+    let voiceListening = false;
+    let voiceRec = null;
+    let voiceRestartTimer = null;
+    let lastCastSpell = null;
+    let lastCastTime = 0;
+
+    // Feature detect Web Speech API
+    if (!SpeechRecognition) {
+      btnVoiceToggle.style.display = 'none';
+      voiceFeedback.textContent = 'Voice recognition not supported in this browser. Use typed/tap cast!';
+    }
+
+    function createVoiceEngine() {
+      if (!SpeechRecognition) return null;
+      const rec = new SpeechRecognition();
+      rec.lang = 'en-US';
+      rec.interimResults = true;
+      rec.continuous = false; // non-continuous mode for reliable reconnection
+      rec.maxAlternatives = 1;
+
+      rec.onresult = (event) => {
+        let transcript = '';
+        let isFinal = false;
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+          if (event.results[i].isFinal) isFinal = true;
+        }
+
+        const raw = transcript.trim();
+        if (!raw) return;
+
+        // Try fuzzy match
+        const matched = window.matchSpell(raw);
+
+        if (matched) {
+          voiceFeedback.innerHTML = `Heard: "<span class="matched">${raw}</span>" &rarr; Casting <strong>${window.SPELLS[matched].name.toUpperCase()}</strong>!`;
+          
+          // Debounce voice casting to avoid accidental double casts
+          const now = Date.now();
+          if (matched !== lastCastSpell || (now - lastCastTime > 600)) {
+            lastCastSpell = matched;
+            lastCastTime = now;
+            socket.emit('cast', { spell: matched, chant: raw, source: 'voice' });
+          }
+        } else {
+          voiceFeedback.innerHTML = `Listening: "<span class="highlight">${raw}</span>"...`;
+        }
+      };
+
+      rec.onerror = (event) => {
+        if (event.error === 'not-allowed') {
+          voiceFeedback.textContent = '🚫 Mic access denied in browser settings.';
+          stopVoice();
+        } else if (event.error !== 'no-speech') {
+          console.warn('Voice error:', event.error);
+        }
+      };
+
+      rec.onend = () => {
+        if (voiceListening) {
+          clearTimeout(voiceRestartTimer);
+          voiceRestartTimer = setTimeout(() => {
+            if (voiceListening) {
+              try {
+                voiceRec = createVoiceEngine();
+                voiceRec.start();
+              } catch (e) { /* ignore retry collision */ }
+            }
+          }, 250);
+        }
+      };
+
+      return rec;
+    }
+
+    function startVoice() {
+      if (!SpeechRecognition) return;
+      voiceRec = createVoiceEngine();
+      try {
+        voiceRec.start();
+        voiceListening = true;
+        btnVoiceToggle.classList.add('listening');
+        micStatusText.textContent = 'Voice Cast: ON';
+        voiceFeedback.innerHTML = 'Microphone active! <span class="highlight">Shout your spells!</span>';
+      } catch (err) {
+        console.error('Mic start error:', err);
+      }
+    }
+
+    function stopVoice() {
+      voiceListening = false;
+      clearTimeout(voiceRestartTimer);
+      if (voiceRec) {
+        voiceRec.stop();
+        voiceRec = null;
+      }
+      btnVoiceToggle.classList.remove('listening');
+      micStatusText.textContent = 'Voice Cast: OFF';
+      voiceFeedback.textContent = 'Voice casting paused. Tap button to activate.';
+    }
+
+    btnVoiceToggle.addEventListener('click', () => {
+      if (voiceListening) {
+        stopVoice();
+      } else {
+        startVoice();
+      }
+    });
+
+    // ─── Typed Spell Fallback ───
+    typedCastForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = typedSpellInput.value.trim();
+      if (!text) return;
+
+      const matched = window.matchSpell(text);
+      if (matched) {
+        voiceFeedback.innerHTML = `Typed: "<span class="matched">${text}</span>" &rarr; <strong>${window.SPELLS[matched].name.toUpperCase()}</strong>`;
+        socket.emit('cast', { spell: matched, chant: text, source: 'text' });
+      } else {
+        voiceFeedback.innerHTML = `❌ No spell matched for "<span class="highlight">${text}</span>"`;
+        // Send raw text to server in case server knows custom aliases
+        socket.emit('cast', { text: text, source: 'text' });
+      }
+
+      typedSpellInput.value = '';
+    });
 
     requestAnimationFrame(renderLoop);
   </script>
