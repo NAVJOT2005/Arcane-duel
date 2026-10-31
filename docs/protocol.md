@@ -1,32 +1,39 @@
 # Mage Duel – Network Protocol
 
-> Draft — will be filled in on Day 3 when multiplayer is implemented.
+Server is authoritative and controls state, timestamps, and game ticks.
 
-## Client → Server
+All server messages include `serverTime: number` for clock synchronization.
 
-| Event | Payload | When |
-|-------|---------|------|
-| `create_room` | `{ name }` | Player creates a new room |
-| `join_room` | `{ code, name }` | Player joins with a room code |
-| `cast` | `{ spell, source }` | Player attempts to cast (source: "tap", "voice", "text") |
-| `rematch` | `{}` | Player wants to play again |
-| `leave` | `{}` | Player leaves the room |
+---
 
-## Server → Client
+## Client → Server Events
 
-| Event | Payload | Notes |
-|-------|---------|-------|
-| `room_created` | `{ code }` | Room code to share |
-| `room_update` | `{ players }` | Lobby state |
-| `match_start` | `{ startsAt }` | Countdown begins |
-| `cast_started` | `{ id, caster, spell, endsAt }` | Wind-up started (both see it) |
-| `cast_cancelled` | `{ id, reason }` | Wind-up interrupted |
-| `hit` | `{ id, target, damage, blocked, perfect }` | Damage resolved |
-| `block_started` | `{ player, endsAt }` | Block active |
-| `stunned` | `{ player, until }` | Stun applied |
-| `state` | `{ hp, mana, cooldowns }` | Snapshot every ~250ms |
-| `rejected` | `{ spell, reason }` | Cast failed (no mana, cooldown, etc.) |
-| `match_end` | `{ winner, reason }` | Game over |
-| `opponent_disconnected` | `{ deadline }` | 30s countdown |
+| Event | Payload | Description |
+|---|---|---|
+| `ping_server` | `clientTime: number` | Pings server to measure RTT and estimate server clock offset |
+| `create_room` | `{ name: string }` | Host creates a room (callback: `{ ok: boolean, code?: string, error?: string }`) |
+| `join_room` | `{ code: string, name: string }` | Guest joins existing room by code (callback: `{ ok: boolean, code?: string, error?: string }`) |
+| `cast` | `{ spell: string, source: "tap" \| "voice" \| "text" }` | Request to cast a spell |
+| `rematch` | `{}` | Request rematch after a game ends |
+| `leave_room` | `{}` | Intentionally leave or forfeit room |
 
-All server events include `serverTime` for clock sync.
+---
+
+## Server → Client Events
+
+| Event | Payload | Description |
+|---|---|---|
+| `room_update` | `{ code, state: "waiting" \| "in_progress" \| "finished", players: [{ id, name, ready }] }` | Broadcasted on lobby player changes |
+| `match_start` | `{ startsAt, p1: { id, name }, p2: { id, name } }` | Match starting countdown begun |
+| `cast_started` | `{ id, caster, spell, endsAt }` | Wind-up started (visible to both players) |
+| `cast_cancelled` | `{ caster, spell, reason: "interrupted" \| "stunned" }` | Wind-up cancelled |
+| `hit` | `{ target, damage, rawDamage, blocked, perfect }` | Hit resolution |
+| `heal` | `{ player, amount, newHp }` | Heal resolved |
+| `block_started` | `{ player, endsAt }` | Block activated |
+| `block_cooldown_reset` | `{ player }` | Block cooldown refreshed (when opponent casts Ultimate) |
+| `stunned` | `{ player, until }` | Stun applied to player |
+| `state_snapshot` | `{ snapshot: { [id]: { hp, mana, blockActive, stunned, windUp, cooldowns } }, serverTime }` | Broadcasted ~every 250ms for reconciliation |
+| `rejected` | `{ spell, reason }` | Cast attempt failed (no mana, cooldown, stunned, etc.) |
+| `match_end` | `{ winner: string, reason: string }` | Game ended (winner ID or "draw") |
+| `opponent_disconnected` | `{ deadline }` | Opponent disconnected, countdown started |
+| `opponent_reconnected` | `{}` | Opponent reconnected |

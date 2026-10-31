@@ -2,112 +2,968 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mage Duel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mage Duel – Real-time 2-Player Battle</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
-      font-family: 'Segoe UI', Tahoma, sans-serif;
-      background: #0a0a1a;
-      color: #e0e0ff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #090915;
+      color: #e2e8f0;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      text-align: center;
+      padding: 12px;
+      user-select: none;
+    }
+    
+    /* Header & Connection status */
+    header {
+      width: 100%;
+      max-width: 650px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .game-logo {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: #f97316;
+      text-shadow: 0 0 16px rgba(249, 115, 22, 0.4);
+    }
+    .net-pill {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      background: #1e293b;
+      color: #94a3b8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .net-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ef4444;
+    }
+    .net-pill.online .dot { background: #22c55e; }
+    .net-pill.online { color: #86efac; }
+
+    /* Containers */
+    .view-panel {
+      width: 100%;
+      max-width: 650px;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .view-panel.active { display: flex; }
+
+    /* Lobby Card */
+    .card {
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 16px;
       padding: 20px;
+      text-align: center;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
     }
-    h1 {
-      font-size: 3rem;
-      color: #ff6600;
-      text-shadow: 0 0 20px rgba(255, 102, 0, 0.5);
-      margin-bottom: 10px;
+    .card h2 { font-size: 1.5rem; color: #f97316; margin-bottom: 8px; }
+    .card p { color: #94a3b8; font-size: 0.9rem; margin-bottom: 18px; }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+      text-align: left;
     }
-    .subtitle {
-      font-size: 1.1rem;
-      color: #8888cc;
-      margin-bottom: 40px;
+    label { font-size: 0.8rem; font-weight: 600; color: #cbd5e1; }
+    input[type="text"] {
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 1.05rem;
+      outline: none;
+      transition: border-color 0.2s;
     }
-    #status {
-      font-size: 1.3rem;
-      padding: 20px 40px;
+    input[type="text"]:focus { border-color: #f97316; }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
       border-radius: 12px;
-      background: #1a1a3a;
-      border: 2px solid #333366;
-      margin-bottom: 20px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
     }
-    #status.connected {
-      border-color: #00cc66;
-      color: #00cc66;
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: #ea580c; color: white; }
+    .btn-secondary { background: #334155; color: #e2e8f0; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .room-badge {
+      display: inline-block;
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: 4px;
+      padding: 12px 24px;
+      border-radius: 12px;
+      background: #030712;
+      border: 2px dashed #f97316;
+      color: #fb923c;
+      margin: 12px 0;
     }
-    #status.disconnected {
-      border-color: #cc3333;
-      color: #cc3333;
-    }
-    #latency {
-      font-size: 0.9rem;
-      color: #6666aa;
-      margin-bottom: 30px;
-    }
-    .links {
-      margin-top: 20px;
-    }
-    .links a {
-      color: #ff9944;
-      text-decoration: none;
-      font-size: 1.1rem;
-      padding: 10px 20px;
-      border: 1px solid #ff9944;
+
+    .share-link-btn {
+      margin-top: 6px;
+      padding: 8px 14px;
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #93c5fd;
       border-radius: 8px;
-      transition: background 0.2s;
+      font-size: 0.85rem;
+      cursor: pointer;
     }
-    .links a:hover {
-      background: rgba(255, 153, 68, 0.15);
+
+    /* ─── Battle Arena ─── */
+    .arena-duo {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
+
+    .mage-card {
+      background: #111827;
+      border-radius: 14px;
+      padding: 14px;
+      border: 2px solid #1f2937;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .mage-card.you { border-color: #10b981; }
+    .mage-card.opp { border-color: #ef4444; }
+    .mage-card.blocking {
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.45);
+      border-color: #38bdf8 !important;
+    }
+    .mage-card.stunned {
+      border-color: #eab308 !important;
+      opacity: 0.85;
+    }
+
+    .mage-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .mage-title { font-weight: 800; font-size: 1.05rem; }
+    .mage-card.you .mage-title { color: #34d399; }
+    .mage-card.opp .mage-title { color: #f87171; }
+    
+    .status-tags {
+      display: flex;
+      gap: 6px;
+    }
+    .tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    .tag-block { background: #0284c7; color: white; }
+    .tag-stun { background: #ca8a04; color: black; }
+    .tag-charge { background: #ea580c; color: white; animation: blink 1s infinite alternate; }
+
+    @keyframes blink {
+      from { opacity: 0.6; }
+      to { opacity: 1; }
+    }
+
+    /* Meters */
+    .meter-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-top: 4px;
+      color: #94a3b8;
+    }
+    .meter-bg {
+      width: 100%;
+      height: 18px;
+      background: #1f2937;
+      border-radius: 9px;
+      overflow: hidden;
+      margin-top: 2px;
+      position: relative;
+    }
+    .meter-fill {
+      height: 100%;
+      border-radius: 9px;
+      transition: width 0.12s ease-out;
+    }
+    .hp-fill { background: linear-gradient(90deg, #dc2626, #ef4444); }
+    .mana-fill { background: linear-gradient(90deg, #2563eb, #60a5fa); }
+
+    /* Wind-up charge bar */
+    .charge-track {
+      height: 8px;
+      background: #0f172a;
+      border-radius: 4px;
+      margin-top: 6px;
+      overflow: hidden;
+      display: none;
+    }
+    .charge-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f59e0b, #f97316);
+      width: 0%;
+      transition: width 0.05s linear;
+    }
+
+    /* ─── Spell Buttons Panel ─── */
+    .spell-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .spell-btn {
+      background: #1e293b;
+      border: 2px solid #334155;
+      border-radius: 12px;
+      padding: 10px 6px;
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      font-weight: 700;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.08s, background 0.15s, border-color 0.15s;
+    }
+    .spell-btn:hover:not(:disabled) {
+      background: #2d3748;
+      border-color: #f97316;
+    }
+    .spell-btn:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+    .spell-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      border-color: #1e293b;
+    }
+    .spell-subtext {
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: #94a3b8;
+    }
+    .spell-cost { color: #60a5fa; font-weight: 700; }
+    .spell-btn.ult-btn {
+      border-color: #eab308;
+      background: #27210e;
+    }
+
+    /* Cooldown sweep overlay on button */
+    .cd-sweep {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.65);
+      color: #fde047;
+      font-size: 1.1rem;
+      font-weight: 900;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      display: none;
+    }
+
+    /* ─── Battle Log ─── */
+    .log-box {
+      background: #0b0f17;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 10px;
+      height: 110px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 0.78rem;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .log-row { padding: 2px 0; }
+    .log-hit { color: #f87171; }
+    .log-block { color: #38bdf8; }
+    .log-heal { color: #4ade80; }
+    .log-cast { color: #fb923c; }
+    .log-system { color: #94a3b8; }
+
+    /* ─── Modal / End Screen ─── */
+    .modal-backdrop {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      z-index: 50;
+    }
+    .modal-backdrop.show { display: flex; }
+    .modal-card {
+      background: #111827;
+      border: 2px solid #374151;
+      border-radius: 20px;
+      padding: 30px 24px;
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      animation: popIn 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes popIn {
+      from { transform: scale(0.85); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal-title { font-size: 2.2rem; font-weight: 900; margin-bottom: 8px; }
+    .modal-sub { color: #cbd5e1; margin-bottom: 24px; }
+    .win-text { color: #22c55e; }
+    .lose-text { color: #ef4444; }
+    .draw-text { color: #eab308; }
+
+    /* Quick links */
+    .footer-links {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      color: #64748b;
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+    }
+    .footer-links a { color: #f97316; text-decoration: none; }
+    .footer-links a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1>⚔️ MAGE DUEL ⚔️</h1>
-  <p class="subtitle">Shout spells. Block attacks. Become legendary.</p>
-  <div id="status" class="disconnected">Connecting...</div>
-  <div id="latency"></div>
-  <div class="links">
-    <a href="/local-test.html">⚔️ Local Test (vs Dummy)</a>
-    <a href="/voice.html">🎤 Voice Spike Test</a>
+
+  <header>
+    <div class="game-logo">⚡ MAGE DUEL</div>
+    <div id="netPill" class="net-pill">
+      <div class="dot"></div>
+      <span id="netText">Connecting...</span>
+    </div>
+  </header>
+
+  <!-- 1. Lobby View -->
+  <div id="viewLobby" class="view-panel active">
+    <div class="card">
+      <h2>Join the Arena</h2>
+      <p>Face an opponent in real-time. No install required.</p>
+
+      <div class="input-group">
+        <label for="playerNameInput">Your Mage Name</label>
+        <input type="text" id="playerNameInput" maxlength="15" placeholder="e.g. FlameWeaver" value="Mage" />
+      </div>
+
+      <div class="btn-row" style="margin-bottom: 16px;">
+        <button id="btnCreateRoom" class="btn btn-primary">Create Room</button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+        <div style="flex:1; height: 1px; background: #334155;"></div>
+        <span style="font-size: 0.75rem; color: #64748b;">OR JOIN WITH CODE</span>
+        <div style="flex:1; height: 1px; background: #334155;"></div>
+      </div>
+
+      <div class="input-group">
+        <input type="text" id="roomCodeInput" maxlength="6" placeholder="4-LETTER CODE (e.g. AB7C)" style="text-transform: uppercase; text-align: center; font-weight: bold; letter-spacing: 2px;" />
+      </div>
+      <button id="btnJoinRoom" class="btn btn-secondary" style="width: 100%;">Join Room</button>
+    </div>
   </div>
 
+  <!-- 2. Room Waiting View -->
+  <div id="viewWaiting" class="view-panel">
+    <div class="card">
+      <h2>Room Created!</h2>
+      <p>Share this room code with player 2</p>
+
+      <div class="room-badge" id="displayRoomCode">----</div>
+      
+      <div>
+        <button id="btnCopyLink" class="share-link-btn">📋 Copy Invite Link</button>
+      </div>
+
+      <p style="margin-top: 20px; font-size: 0.85rem;" id="waitingStatusText">
+        Waiting for challenger to join...
+      </p>
+
+      <button id="btnCancelWaiting" class="btn btn-secondary" style="margin-top: 14px; padding: 10px;">Leave Room</button>
+    </div>
+  </div>
+
+  <!-- 3. Battle View -->
+  <div id="viewBattle" class="view-panel">
+    <div class="arena-duo">
+      <!-- Opponent Card (Top) -->
+      <div id="oppCard" class="mage-card opp">
+        <div class="mage-header">
+          <div class="mage-title" id="oppName">Opponent</div>
+          <div class="status-tags" id="oppTags"></div>
+        </div>
+        
+        <div class="meter-label">
+          <span>HP</span>
+          <span id="oppHpText">100 / 100</span>
+        </div>
+        <div class="meter-bg">
+          <div id="oppHpFill" class="meter-fill hp-fill" style="width: 100%;"></div>
+        </div>
+
+        <div class="meter-label">
+          <span>MANA</span>
+          <span id="oppManaText">5.0 / 10</span>
+        </div>
+        <div class="meter-bg">
+          <div id="oppManaFill" class="meter-fill mana-fill" style="width: 50%;"></div>
+        </div>
+
+        <div id="oppChargeTrack" class="charge-track">
+          <div id="oppChargeFill" class="charge-fill"></div>
+        </div>
+      </div>
+
+      <!-- You Card (Bottom) -->
+      <div id="youCard" class="mage-card you">
+        <div class="mage-header">
+          <div class="mage-title" id="youName">You</div>
+          <div class="status-tags" id="youTags"></div>
+        </div>
+        
+        <div class="meter-label">
+          <span>HP</span>
+          <span id="youHpText">100 / 100</span>
+        </div>
+        <div class="meter-bg">
+          <div id="youHpFill" class="meter-fill hp-fill" style="width: 100%;"></div>
+        </div>
+
+        <div class="meter-label">
+          <span>MANA</span>
+          <span id="youManaText">5.0 / 10</span>
+        </div>
+        <div class="meter-bg">
+          <div id="youManaFill" class="meter-fill mana-fill" style="width: 50%;"></div>
+        </div>
+
+        <div id="youChargeTrack" class="charge-track">
+          <div id="youChargeFill" class="charge-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spell Actions (Tap Buttons) -->
+    <div class="spell-grid" id="spellButtons">
+      <!-- Populated dynamically from SPELLS config -->
+    </div>
+
+    <!-- Battle Log -->
+    <div class="log-box" id="battleLog">
+      <div class="log-row log-system">Battle initiated! Cast spells with buttons or voice.</div>
+    </div>
+  </div>
+
+  <!-- End Game Modal -->
+  <div id="endModal" class="modal-backdrop">
+    <div class="modal-card">
+      <div id="endTitle" class="modal-title">VICTORY!</div>
+      <div id="endDesc" class="modal-sub">You reduced your opponent to dust.</div>
+      <div class="btn-row">
+        <button id="btnRematch" class="btn btn-primary">Rematch</button>
+        <button id="btnLeaveBattle" class="btn btn-secondary">Exit Lobby</button>
+      </div>
+      <p id="rematchStatus" style="font-size: 0.8rem; color: #94a3b8; margin-top: 14px;"></p>
+    </div>
+  </div>
+
+  <div class="footer-links">
+    <a href="/voice.html">🎤 Voice Spike</a>
+    <a href="/local-test.html">🤖 Practice vs Dummy</a>
+  </div>
+
+  <!-- Load dependencies -->
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/spells.js"></script>
+
   <script>
+    // ─── Network & Clock Synchronization ───
     const socket = io();
-    const statusEl = document.getElementById('status');
-    const latencyEl = document.getElementById('latency');
+    let clockOffset = 0; // serverTime - clientTime
+    let myId = null;
+    let currentRoom = null;
+    let activeMatch = null;
+    let rtt = 0;
 
-    socket.on('connect', () => {
-      statusEl.textContent = '✅ Connected to server';
-      statusEl.className = 'connected';
-      measureLatency();
-    });
+    const netPill = document.getElementById('netPill');
+    const netText = document.getElementById('netText');
 
-    socket.on('disconnect', () => {
-      statusEl.textContent = '❌ Disconnected';
-      statusEl.className = 'disconnected';
-      latencyEl.textContent = '';
-    });
-
-    function measureLatency() {
-      const start = Date.now();
-      socket.emit('ping_server', start, (response) => {
-        const rtt = Date.now() - start;
-        const serverTime = new Date(response.serverTime).toLocaleTimeString();
-        latencyEl.textContent = `Latency: ${rtt}ms | Server time: ${serverTime}`;
+    function syncClock() {
+      const clientStart = Date.now();
+      socket.emit('ping_server', clientStart, (res) => {
+        const clientEnd = Date.now();
+        rtt = clientEnd - clientStart;
+        const estimatedServerTimeAtReceive = res.serverTime + (rtt / 2);
+        clockOffset = estimatedServerTimeAtReceive - clientEnd;
+        netPill.className = 'net-pill online';
+        netText.textContent = `${rtt}ms`;
       });
     }
 
-    // Re-measure every 5 seconds
-    setInterval(() => {
-      if (socket.connected) measureLatency();
-    }, 5000);
+    socket.on('connect', () => {
+      myId = socket.id;
+      syncClock();
+      setInterval(syncClock, 8000);
+      checkUrlParams();
+    });
+
+    socket.on('disconnect', () => {
+      netPill.className = 'net-pill';
+      netText.textContent = 'Offline';
+    });
+
+    function getServerNow() {
+      return Date.now() + clockOffset;
+    }
+
+    // ─── View Navigation ───
+    const views = {
+      lobby: document.getElementById('viewLobby'),
+      waiting: document.getElementById('viewWaiting'),
+      battle: document.getElementById('viewBattle')
+    };
+
+    function showView(viewName) {
+      Object.keys(views).forEach(v => {
+        views[v].classList.toggle('active', v === viewName);
+      });
+    }
+
+    // ─── Lobby & Room Code Setup ───
+    const playerNameInput = document.getElementById('playerNameInput');
+    const roomCodeInput = document.getElementById('roomCodeInput');
+    const btnCreateRoom = document.getElementById('btnCreateRoom');
+    const btnJoinRoom = document.getElementById('btnJoinRoom');
+    const displayRoomCode = document.getElementById('displayRoomCode');
+    const btnCopyLink = document.getElementById('btnCopyLink');
+    const btnCancelWaiting = document.getElementById('btnCancelWaiting');
+
+    // Auto-fill random mage name if default
+    if (!localStorage.getItem('md_mage_name')) {
+      const names = ['Ignis', 'Zephyr', 'Volt', 'Glacius', 'Sol', 'Shadow'];
+      playerNameInput.value = names[Math.floor(Math.random() * names.length)] + Math.floor(10 + Math.random() * 89);
+    } else {
+      playerNameInput.value = localStorage.getItem('md_mage_name');
+    }
+
+    function checkUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const roomParam = params.get('room');
+      if (roomParam) {
+        roomCodeInput.value = roomParam.trim().toUpperCase();
+      }
+    }
+
+    btnCreateRoom.addEventListener('click', () => {
+      const name = playerNameInput.value.trim() || 'Mage';
+      localStorage.setItem('md_mage_name', name);
+      socket.emit('create_room', { name }, (res) => {
+        if (res.ok) {
+          currentRoom = res.code;
+          displayRoomCode.textContent = res.code;
+          showView('waiting');
+        }
+      });
+    });
+
+    btnJoinRoom.addEventListener('click', () => {
+      const code = roomCodeInput.value.trim().toUpperCase();
+      const name = playerNameInput.value.trim() || 'Mage';
+      if (!code) return alert('Please enter a room code');
+      localStorage.setItem('md_mage_name', name);
+
+      socket.emit('join_room', { code, name }, (res) => {
+        if (!res.ok) {
+          alert(res.error || 'Failed to join room');
+        } else {
+          currentRoom = res.code;
+          displayRoomCode.textContent = res.code;
+          showView('waiting');
+        }
+      });
+    });
+
+    btnCopyLink.addEventListener('click', () => {
+      const url = `${window.location.origin}/?room=${currentRoom}`;
+      navigator.clipboard.writeText(url).then(() => {
+        btnCopyLink.textContent = '✅ Link Copied!';
+        setTimeout(() => { btnCopyLink.textContent = '📋 Copy Invite Link'; }, 2000);
+      });
+    });
+
+    btnCancelWaiting.addEventListener('click', () => {
+      socket.emit('leave_room');
+      currentRoom = null;
+      showView('lobby');
+    });
+
+    // ─── Socket Room Updates ───
+    socket.on('room_update', (room) => {
+      currentRoom = room.code;
+      if (room.state === 'waiting') {
+        const opp = room.players.find(p => p.id !== myId);
+        if (opp) {
+          document.getElementById('waitingStatusText').textContent = `${opp.name} joined! Preparing match...`;
+        }
+      }
+    });
+
+    // ─── Match Initialization & Real-Time Sync ───
+    const youName = document.getElementById('youName');
+    const oppName = document.getElementById('oppName');
+    const youHpFill = document.getElementById('youHpFill');
+    const oppHpFill = document.getElementById('oppHpFill');
+    const youHpText = document.getElementById('youHpText');
+    const oppHpText = document.getElementById('oppHpText');
+    const youManaFill = document.getElementById('youManaFill');
+    const oppManaFill = document.getElementById('oppManaFill');
+    const youManaText = document.getElementById('youManaText');
+    const oppManaText = document.getElementById('oppManaText');
+    const youTags = document.getElementById('youTags');
+    const oppTags = document.getElementById('oppTags');
+    const youCard = document.getElementById('youCard');
+    const oppCard = document.getElementById('oppCard');
+    const youChargeTrack = document.getElementById('youChargeTrack');
+    const youChargeFill = document.getElementById('youChargeFill');
+    const oppChargeTrack = document.getElementById('oppChargeTrack');
+    const oppChargeFill = document.getElementById('oppChargeFill');
+    const battleLog = document.getElementById('battleLog');
+    const spellButtonsContainer = document.getElementById('spellButtons');
+
+    // Local client-side tracking state (reconciled by server snapshots)
+    let localPlayers = {};
+    let opponentId = null;
+
+    socket.on('match_start', (data) => {
+      document.getElementById('endModal').classList.remove('show');
+      battleLog.innerHTML = '';
+      
+      const you = data.p1.id === myId ? data.p1 : data.p2;
+      const opp = data.p1.id === myId ? data.p2 : data.p1;
+      opponentId = opp.id;
+
+      youName.textContent = `🧙 ${you.name} (You)`;
+      oppName.textContent = `👺 ${opp.name}`;
+
+      localPlayers[myId] = { hp: 100, mana: 5, lastManaUpdate: data.startsAt, cooldowns: {}, windUp: null, blockUntil: 0, stunUntil: 0 };
+      localPlayers[opp.id] = { hp: 100, mana: 5, lastManaUpdate: data.startsAt, cooldowns: {}, windUp: null, blockUntil: 0, stunUntil: 0 };
+
+      addLog('cast', `⚔️ Duel started! First to 0 HP loses.`);
+      showView('battle');
+      buildSpellButtons();
+    });
+
+    // ─── Button Building ───
+    const SPELL_LIST = ['zap', 'block', 'fireball', 'lightning', 'heal', 'ultimate'];
+
+    function buildSpellButtons() {
+      spellButtonsContainer.innerHTML = '';
+      SPELL_LIST.forEach(sid => {
+        const spell = window.SPELLS[sid];
+        const btn = document.createElement('button');
+        btn.className = `spell-btn ${sid === 'ultimate' ? 'ult-btn' : ''}`;
+        btn.id = `btn_spell_${sid}`;
+        btn.innerHTML = `
+          <span>${spell.name}</span>
+          <span class="spell-subtext">
+            <span class="spell-cost">${spell.cost > 0 ? spell.cost + 'M' : 'FREE'}</span> • 
+            ${spell.damage ? spell.damage + 'dmg' : spell.heal ? '+' + spell.heal + 'hp' : '1.5s'}
+          </span>
+          <div class="cd-sweep" id="cd_${sid}"></div>
+        `;
+        btn.addEventListener('click', () => {
+          socket.emit('cast', { spell: sid, source: 'tap' });
+        });
+        spellButtonsContainer.appendChild(btn);
+      });
+    }
+
+    // ─── Server Event Handlers ───
+    socket.on('cast_started', (ev) => {
+      const p = localPlayers[ev.caster];
+      if (p) {
+        p.windUp = { spell: ev.spell, endsAt: ev.endsAt, total: window.SPELLS[ev.spell].windUp };
+      }
+      const casterName = ev.caster === myId ? 'You' : oppName.textContent;
+      addLog('cast', `⚡ ${casterName} is charging ${window.SPELLS[ev.spell].name}!`);
+    });
+
+    socket.on('cast_cancelled', (ev) => {
+      const p = localPlayers[ev.caster];
+      if (p) p.windUp = null;
+      const casterName = ev.caster === myId ? 'You' : oppName.textContent;
+      addLog('system', `❌ ${casterName}'s spell was ${ev.reason}!`);
+    });
+
+    socket.on('block_started', (ev) => {
+      const p = localPlayers[ev.player];
+      if (p) p.blockUntil = ev.endsAt;
+      const who = ev.player === myId ? 'You' : oppName.textContent;
+      addLog('block', `🛡️ ${who} activated Block!`);
+    });
+
+    socket.on('block_cooldown_reset', (ev) => {
+      const p = localPlayers[ev.player];
+      if (p) delete p.cooldowns['block'];
+      if (ev.player === myId) {
+        addLog('system', `⚡ Ultimate incoming! Your Block cooldown was reset!`);
+      }
+    });
+
+    socket.on('stunned', (ev) => {
+      const p = localPlayers[ev.player];
+      if (p) p.stunUntil = ev.until;
+      const who = ev.player === myId ? 'You' : oppName.textContent;
+      addLog('hit', `😵 ${who} is stunned!`);
+    });
+
+    socket.on('hit', (ev) => {
+      const p = localPlayers[ev.target];
+      if (p) {
+        p.hp = Math.max(0, p.hp - ev.damage);
+      }
+      const targetName = ev.target === myId ? 'You' : oppName.textContent;
+      if (ev.blocked) {
+        if (ev.perfect) {
+          addLog('block', `⚡ PERFECT BLOCK! ${targetName} reflected all damage & stunned attacker!`);
+        } else {
+          addLog('block', `🛡️ Blocked! ${targetName} took ${ev.damage} dmg.`);
+        }
+      } else {
+        addLog('hit', `💥 ${targetName} took ${ev.damage} damage!`);
+      }
+    });
+
+    socket.on('heal', (ev) => {
+      const p = localPlayers[ev.player];
+      if (p) p.hp = ev.newHp;
+      const who = ev.player === myId ? 'You' : oppName.textContent;
+      addLog('heal', `💚 ${who} recovered +${ev.amount} HP!`);
+    });
+
+    socket.on('rejected', (ev) => {
+      // Rejection feedback
+      const reasonMap = {
+        no_mana: 'Not enough mana!',
+        cooldown: 'Spell on cooldown!',
+        stunned: 'Cannot cast while stunned!',
+        already_casting: 'Already charging a spell!'
+      };
+      addLog('system', `⚠️ ${window.SPELLS[ev.spell].name} rejected: ${reasonMap[ev.reason] || ev.reason}`);
+    });
+
+    // Authoritative state reconciliation snapshot
+    socket.on('state_snapshot', (data) => {
+      const now = getServerNow();
+      for (const [pid, snap] of Object.entries(data.snapshot)) {
+        if (!localPlayers[pid]) localPlayers[pid] = {};
+        const p = localPlayers[pid];
+        p.hp = snap.hp;
+        p.mana = snap.mana;
+        p.lastManaUpdate = now;
+        p.blockUntil = snap.blockActive ? now + 1000 : 0;
+        p.stunUntil = snap.stunned ? now + 1000 : 0;
+        p.windUp = snap.windUp;
+        
+        // Cooldowns
+        p.cooldowns = {};
+        for (const [sid, rem] of Object.entries(snap.cooldowns)) {
+          p.cooldowns[sid] = now + rem;
+        }
+      }
+    });
+
+    // ─── Match End & Rematch ───
+    const endModal = document.getElementById('endModal');
+    const endTitle = document.getElementById('endTitle');
+    const endDesc = document.getElementById('endDesc');
+    const btnRematch = document.getElementById('btnRematch');
+    const btnLeaveBattle = document.getElementById('btnLeaveBattle');
+    const rematchStatus = document.getElementById('rematchStatus');
+
+    socket.on('match_end', (ev) => {
+      endModal.classList.add('show');
+      rematchStatus.textContent = '';
+      btnRematch.disabled = false;
+
+      if (ev.winner === myId) {
+        endTitle.textContent = '🏆 VICTORY!';
+        endTitle.className = 'modal-title win-text';
+        endDesc.textContent = ev.reason === 'opponent_left' ? 'Opponent retreated from duel.' : 'You crushed your rival!';
+      } else if (ev.winner === 'draw') {
+        endTitle.textContent = '🤝 DRAW!';
+        endTitle.className = 'modal-title draw-text';
+        endDesc.textContent = 'Both mages fell in the blaze of glory.';
+      } else {
+        endTitle.textContent = '💀 DEFEAT';
+        endTitle.className = 'modal-title lose-text';
+        endDesc.textContent = 'Better luck next duel. Master the perfect block!';
+      }
+    });
+
+    btnRematch.addEventListener('click', () => {
+      btnRematch.disabled = true;
+      rematchStatus.textContent = 'Waiting for opponent to accept...';
+      socket.emit('rematch');
+    });
+
+    btnLeaveBattle.addEventListener('click', () => {
+      endModal.classList.remove('show');
+      socket.emit('leave_room');
+      showView('lobby');
+    });
+
+    function addLog(type, text) {
+      const row = document.createElement('div');
+      row.className = `log-row log-${type}`;
+      row.textContent = text;
+      battleLog.prepend(row);
+      while (battleLog.children.length > 40) {
+        battleLog.removeChild(battleLog.lastChild);
+      }
+    }
+
+    // ─── Render Loop (60 FPS interpolation for meters, cooldowns & wind-ups) ───
+    function renderLoop() {
+      requestAnimationFrame(renderLoop);
+      if (!localPlayers[myId] || !opponentId || !localPlayers[opponentId]) return;
+
+      const now = getServerNow();
+      const me = localPlayers[myId];
+      const opp = localPlayers[opponentId];
+
+      // Mana continuous interpolation client-side
+      const myRate = me.hp <= window.PLAYER.lowHpThreshold ? window.PLAYER.lowHpManaRegen : window.PLAYER.manaRegen;
+      const myElapsed = (now - (me.lastManaUpdate || now)) / 1000;
+      const currentMyMana = Math.min(window.PLAYER.maxMana, Math.max(0, me.mana + (myElapsed * myRate)));
+
+      const oppRate = opp.hp <= window.PLAYER.lowHpThreshold ? window.PLAYER.lowHpManaRegen : window.PLAYER.manaRegen;
+      const oppElapsed = (now - (opp.lastManaUpdate || now)) / 1000;
+      const currentOppMana = Math.min(window.PLAYER.maxMana, Math.max(0, opp.mana + (oppElapsed * oppRate)));
+
+      // HP & Mana Bars
+      youHpFill.style.width = `${Math.max(0, (me.hp / window.PLAYER.maxHp) * 100)}%`;
+      youHpText.textContent = `${Math.round(me.hp)} / 100`;
+      youManaFill.style.width = `${(currentMyMana / window.PLAYER.maxMana) * 100}%`;
+      youManaText.textContent = `${currentMyMana.toFixed(1)} / 10`;
+
+      oppHpFill.style.width = `${Math.max(0, (opp.hp / window.PLAYER.maxHp) * 100)}%`;
+      oppHpText.textContent = `${Math.round(opp.hp)} / 100`;
+      oppManaFill.style.width = `${(currentOppMana / window.PLAYER.maxMana) * 100}%`;
+      oppManaText.textContent = `${currentOppMana.toFixed(1)} / 10`;
+
+      // Status tags & visual borders
+      updateMageVisuals(youCard, youTags, me, now);
+      updateMageVisuals(oppCard, oppTags, opp, now);
+
+      // Wind-up bars
+      updateWindupTrack(youChargeTrack, youChargeFill, me, now);
+      updateWindupTrack(oppChargeTrack, oppChargeFill, opp, now);
+
+      // Buttons cooldown & mana availability
+      updateButtonStates(me, currentMyMana, now);
+    }
+
+    function updateMageVisuals(card, tagContainer, player, now) {
+      const isBlocking = player.blockUntil > now;
+      const isStunned = player.stunUntil > now;
+      const isWinding = !!player.windUp;
+
+      card.classList.toggle('blocking', isBlocking);
+      card.classList.toggle('stunned', isStunned);
+
+      let tagsHtml = '';
+      if (isStunned) tagsHtml += `<span class="tag tag-stun">😵 STUNNED</span>`;
+      if (isBlocking) tagsHtml += `<span class="tag tag-block">🛡️ SHIELD</span>`;
+      if (isWinding) tagsHtml += `<span class="tag tag-charge">⚡ ${window.SPELLS[player.windUp.spell].name}</span>`;
+      tagContainer.innerHTML = tagsHtml;
+    }
+
+    function updateWindupTrack(track, fill, player, now) {
+      if (player.windUp && player.windUp.endsAt > now) {
+        const total = player.windUp.total || window.SPELLS[player.windUp.spell].windUp;
+        const remaining = player.windUp.endsAt - now;
+        const progress = Math.max(0, Math.min(1, 1 - (remaining / total)));
+        track.style.display = 'block';
+        fill.style.width = `${progress * 100}%`;
+      } else {
+        track.style.display = 'none';
+        fill.style.width = '0%';
+      }
+    }
+
+    function updateButtonStates(player, currentMana, now) {
+      const isStunned = player.stunUntil > now;
+      const isWinding = !!player.windUp;
+
+      SPELL_LIST.forEach(sid => {
+        const spell = window.SPELLS[sid];
+        const btn = document.getElementById(`btn_spell_${sid}`);
+        const cdOverlay = document.getElementById(`cd_${sid}`);
+        if (!btn || !cdOverlay) return;
+
+        const cdUntil = player.cooldowns ? player.cooldowns[sid] : 0;
+        const onCd = cdUntil && cdUntil > now;
+
+        if (onCd) {
+          const remSec = ((cdUntil - now) / 1000).toFixed(1);
+          cdOverlay.style.display = 'flex';
+          cdOverlay.textContent = `${remSec}s`;
+          btn.disabled = true;
+        } else {
+          cdOverlay.style.display = 'none';
+          
+          let disabled = false;
+          if (isStunned) disabled = true;
+          else if (!spell.instant && isWinding) disabled = true;
+          else if (currentMana < spell.cost) disabled = true;
+
+          btn.disabled = disabled;
+        }
+      });
+    }
+
+    requestAnimationFrame(renderLoop);
   </script>
 </body>
 </html>

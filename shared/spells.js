@@ -100,9 +100,11 @@ const PLAYER = {
   suddenDeathDps: 1       // HP lost per second during sudden death
 };
 
-// Don't let people add 'tap' as a zap alias — it would conflict with tap input
-// The matcher should check longer aliases first to avoid partial matches.
-
-if (typeof module !== 'undefined') {
+// CommonJS & Browser universal export
+if (typeof module !== 'undefined' && module.exports) {
   module.exports = { SPELLS, PLAYER };
+}
+if (typeof window !== 'undefined') {
+  window.SPELLS = SPELLS;
+  window.PLAYER = PLAYER;
 }
