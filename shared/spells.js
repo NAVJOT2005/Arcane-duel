@@ -157,7 +157,9 @@ const SPELLS = {
     cost: 3,
     windUp: 1500,
     cooldown: 0,
-    damage: 16,
+    // 20, not 16: at 16 the spear needed six clean hits to close a 100 HP
+    // match against fire's five, which is why Frost sat at ~30% in simulation.
+    damage: 20,
     heal: 0,
     blockable: true,
     interruptible: false,
@@ -206,7 +208,10 @@ const SPELLS = {
     damage: 14,
     heal: 0,
     blockable: false, // Ignores block
-    interruptible: false,
+    // Interruptible: an unblockable 14 damage spell that also ignored the
+    // interrupt loop had no counterplay at all. It still ignores Block, but a
+    // hit during the wind-up now cancels it (and refunds nothing).
+    interruptible: true,
     instant: false,
     element: 'lightning',
     incantation: 'Shock therapy!',
@@ -249,7 +254,9 @@ const SPELLS = {
     cost: 3,
     windUp: 1500,
     cooldown: 0,
-    damage: 18,
+    // 17, not 18: Boulder also grants +8 Stone Armor per unblocked hit, so it
+    // was strictly the best 3-mana signature and Earth led every matrix.
+    damage: 17,
     heal: 0,
     blockable: true,
     interruptible: false,
