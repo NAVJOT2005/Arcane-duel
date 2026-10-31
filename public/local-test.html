@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mage Duel – Local Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #0a0a1a;
+      color: #e0e0ff;
+      padding: 15px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 1.5rem; color: #ff6600; text-align: center; margin-bottom: 10px; }
+    .desc { text-align: center; color: #8888cc; font-size: 0.85rem; margin-bottom: 15px; }
+
+    /* Arena */
+    .arena {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+    .mage {
+      flex: 1;
+      background: #111133;
+      border-radius: 12px;
+      padding: 15px;
+      text-align: center;
+    }
+    .mage.you { border: 2px solid #00cc66; }
+    .mage.enemy { border: 2px solid #cc3333; }
+    .mage-name { font-size: 1.2rem; font-weight: bold; margin-bottom: 8px; }
+    .mage.you .mage-name { color: #00cc66; }
+    .mage.enemy .mage-name { color: #cc3333; }
+
+    /* Bars */
+    .bar-label { font-size: 0.8rem; color: #8888cc; margin-top: 6px; }
+    .bar-wrap {
+      width: 100%;
+      height: 20px;
+      background: #222244;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 3px;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.15s;
+    }
+    .hp-bar { background: linear-gradient(90deg, #cc3333, #ff4444); }
+    .mana-bar { background: linear-gradient(90deg, #3333cc, #6666ff); }
+    .bar-text {
+      font-size: 0.85rem;
+      margin-top: 2px;
+    }
+
+    /* Status indicators */
+    .status {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      min-height: 1.4em;
+    }
+    .status-block { color: #00ccff; }
+    .status-stun { color: #ffcc00; }
+    .status-windup { color: #ff9944; }
+
+    /* Wind-up bar */
+    .windup-wrap {
+      width: 100%;
+      height: 12px;
+      background: #222244;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 5px;
+      display: none;
+    }
+    .windup-fill {
+      height: 100%;
+      border-radius: 6px;
+      background: linear-gradient(90deg, #ff6600, #ffcc00);
+      transition: width 0.05s linear;
+    }
+
+    /* Spell buttons */
+    .spells-panel {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .spell-btn {
+      padding: 12px 8px;
+      border: 2px solid #444;
+      border-radius: 10px;
+      background: #1a1a3a;
+      color: #e0e0ff;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .spell-btn:hover:not(:disabled) {
+      background: #333366;
+      border-color: #ff6600;
+    }
+    .spell-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .spell-btn .cost { font-size: 0.75rem; color: #6666ff; }
+    .spell-btn .dmg { font-size: 0.75rem; color: #ff4444; }
+
+    /* Event log */
+    .log { margin-top: 10px; }
+    .log h3 { font-size: 1rem; color: #ff9944; margin-bottom: 5px; }
+    #eventLog {
+      background: #111133;
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+      font-family: monospace;
+    }
+    .log-entry { padding: 2px 0; border-bottom: 1px solid #1a1a3a; }
+    .log-hit { color: #ff4444; }
+    .log-block { color: #00ccff; }
+    .log-heal { color: #00cc66; }
+    .log-cast { color: #ff9944; }
+    .log-reject { color: #666; }
+    .log-end { color: #ffcc00; font-weight: bold; }
+
+    /* Winner overlay */
+    #overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+    #overlay.show { display: flex; }
+    #overlay h2 { font-size: 2.5rem; margin-bottom: 15px; }
+    #overlay .win { color: #00cc66; }
+    #overlay .lose { color: #cc3333; }
+    #overlay button {
+      padding: 12px 30px;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 10px;
+      background: #ff6600;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .back { text-align: center; margin-top: 15px; }
+    .back a { color: #ff9944; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>⚔️ Local Test – You vs Dummy ⚔️</h1>
+  <p class="desc">The dummy doesn't fight back. Test all spells, timings, and interactions.</p>
+
+  <div class="arena">
+    <div class="mage you">
+      <div class="mage-name">🧙 YOU</div>
+      <div class="bar-label">HP</div>
+      <div class="bar-wrap"><div class="bar-fill hp-bar" id="yourHpBar" style="width:100%"></div></div>
+      <div class="bar-text" id="yourHpText">100 / 100</div>
+      <div class="bar-label">Mana</div>
+      <div class="bar-wrap"><div class="bar-fill mana-bar" id="yourManaBar" style="width:50%"></div></div>
+      <div class="bar-text" id="yourManaText">5.0 / 10</div>
+      <div class="status" id="yourStatus"></div>
+      <div class="windup-wrap" id="yourWindup"><div class="windup-fill" id="yourWindupFill"></div></div>
+    </div>
+    <div class="mage enemy">
+      <div class="mage-name">🤖 DUMMY</div>
+      <div class="bar-label">HP</div>
+      <div class="bar-wrap"><div class="bar-fill hp-bar" id="enemyHpBar" style="width:100%"></div></div>
+      <div class="bar-text" id="enemyHpText">100 / 100</div>
+      <div class="bar-label">Mana</div>
+      <div class="bar-wrap"><div class="bar-fill mana-bar" id="enemyManaBar" style="width:50%"></div></div>
+      <div class="bar-text" id="enemyManaText">5.0 / 10</div>
+      <div class="status" id="enemyStatus"></div>
+      <div class="windup-wrap" id="enemyWindup"><div class="windup-fill" id="enemyWindupFill"></div></div>
+    </div>
+  </div>
+
+  <div class="spells-panel" id="spellsPanel"></div>
+
+  <div class="log">
+    <h3>Battle Log</h3>
+    <div id="eventLog"></div>
+  </div>
+
+  <div id="overlay">
+    <h2 id="overlayTitle"></h2>
+    <button id="restartBtn">🔄 Play Again</button>
+  </div>
+
+  <div class="back"><a href="/">← Back to Mage Duel</a></div>
+
+  <!-- Load shared modules (browser-compatible via global scope) -->
+  <script src="/shared/spells.js"></script>
+  <script src="/shared/rules.js"></script>
+  <script>
+    // In the browser, the modules attach to window via the typeof module check.
+    // We need to grab them differently. Let's load them inline.
+  </script>
+  <script>
+    // ─── Inline copies for browser (shared modules use CommonJS) ───
+    // We'll re-declare what we need. This is a Day 2 hack; Day 3 will
+    // serve these properly.
+
+    const SPELLS_DATA = {
+      zap: { name: 'Zap', cost: 1, windUp: 0, cooldown: 1500, damage: 4, heal: 0, blockable: true, interruptible: false, instant: true, duration: 0 },
+      block: { name: 'Block', cost: 0, windUp: 0, cooldown: 4000, damage: 0, heal: 0, duration: 1500, blockable: false, instant: true },
+      fireball: { name: 'Fireball', cost: 3, windUp: 1500, cooldown: 0, damage: 18, heal: 0, blockable: true, interruptible: false, instant: false },
+      lightning: { name: 'Lightning', cost: 3, windUp: 1000, cooldown: 0, damage: 7, heal: 0, blockable: false, interruptible: false, instant: false },
+      heal: { name: 'Heal', cost: 4, windUp: 2000, cooldown: 0, damage: 0, heal: 20, blockable: false, interruptible: true, instant: false },
+      ultimate: { name: 'Ultimate', cost: 10, windUp: 3000, cooldown: 0, damage: 50, heal: 0, chipDamage: 15, blockable: true, interruptible: true, instant: false, manaRefund: 5 }
+    };
+    const PLAYER_CFG = {
+      maxHp: 100, maxMana: 10, startMana: 5,
+      manaRegen: 1, lowHpThreshold: 30, lowHpManaRegen: 1.5,
+      perfectBlockWindow: 600, stunDuration: 1000,
+      ultimateStunDuration: 2000, suddenDeathTime: 120000, suddenDeathDps: 1
+    };
+
+    // ─── Minimal local rules engine (mirrors shared/rules.js) ───
+    let state = null;
+    let tickTimer = null;
+
+    function createLocalMatch() {
+      const now = Date.now();
+      return {
+        startedAt: now,
+        winner: null,
+        players: {
+          you: { hp: 100, mana: 5, lastManaUpdate: now, cooldowns: {}, stunUntil: 0, blockUntil: 0, blockStartedAt: 0, windUp: null },
+          dummy: { hp: 100, mana: 5, lastManaUpdate: now, cooldowns: {}, stunUntil: 0, blockUntil: 0, blockStartedAt: 0, windUp: null }
+        },
+        playerIds: ['you', 'dummy']
+      };
+    }
+
+    function getLocalMana(p, now) {
+      const elapsed = (now - p.lastManaUpdate) / 1000;
+      const rate = p.hp <= PLAYER_CFG.lowHpThreshold ? PLAYER_CFG.lowHpManaRegen : PLAYER_CFG.manaRegen;
+      return Math.min(PLAYER_CFG.maxMana, Math.floor((p.mana + elapsed * rate) * 10) / 10);
+    }
+    function flushLocalMana(p, now) { p.mana = getLocalMana(p, now); p.lastManaUpdate = now; }
+
+    function localTryCast(playerId, spellId) {
+      if (state.winner) return;
+      const now = Date.now();
+      const player = state.players[playerId];
+      const spell = SPELLS_DATA[spellId];
+      if (!spell) return;
+
+      if (now < player.stunUntil) { logEvent('reject', `${playerId}: ${spell.name} rejected (stunned)`); return; }
+      if (player.cooldowns[spellId] && now < player.cooldowns[spellId]) { logEvent('reject', `${playerId}: ${spell.name} rejected (cooldown)`); return; }
+      if (!spell.instant && player.windUp) { logEvent('reject', `${playerId}: ${spell.name} rejected (already casting)`); return; }
+
+      flushLocalMana(player, now);
+      if (player.mana < spell.cost) { logEvent('reject', `${playerId}: ${spell.name} rejected (no mana: ${player.mana.toFixed(1)})`); return; }
+
+      player.mana -= spell.cost;
+      if (spell.cooldown > 0) player.cooldowns[spellId] = now + spell.cooldown;
+
+      if (spell.instant) {
+        if (spellId === 'block') {
+          player.blockUntil = now + spell.duration;
+          player.blockStartedAt = now;
+          logEvent('block', `${playerId}: 🛡️ Block activated!`);
+        } else if (spellId === 'zap') {
+          const oppId = playerId === 'you' ? 'dummy' : 'you';
+          localApplyDamage(oppId, spell.damage, true, now, playerId);
+        }
+      } else {
+        player.windUp = { spellId, endsAt: now + spell.windUp };
+        logEvent('cast', `${playerId}: ⚡ ${spell.name} charging... (${spell.windUp / 1000}s)`);
+        if (spellId === 'ultimate') {
+          const oppId = playerId === 'you' ? 'dummy' : 'you';
+          state.players[oppId].cooldowns.block = 0;
+          logEvent('cast', `${oppId}: Block cooldown reset!`);
+        }
+      }
+      updateUI();
+    }
+
+    function localApplyDamage(targetId, damage, blockable, now, attackerId) {
+      const target = state.players[targetId];
+      let blocked = false, perfect = false, actual = damage;
+
+      if (blockable && now < target.blockUntil) {
+        blocked = true;
+        const timeSince = now - target.blockStartedAt;
+        perfect = timeSince <= PLAYER_CFG.perfectBlockWindow;
+        actual = 0;
+      }
+
+      if (actual > 0) {
+        target.hp = Math.max(0, target.hp - actual);
+        logEvent('hit', `${targetId}: 💥 -${actual} HP (${target.hp} left)`);
+
+        // Interrupt interruptible wind-ups
+        if (target.windUp && SPELLS_DATA[target.windUp.spellId].interruptible) {
+          const refund = target.windUp.spellId === 'ultimate' ? 5 : 0;
+          logEvent('cast', `${targetId}: ❌ ${SPELLS_DATA[target.windUp.spellId].name} interrupted!`);
+          target.mana = Math.min(PLAYER_CFG.maxMana, target.mana + refund);
+          target.windUp = null;
+        }
+      } else {
+        logEvent('block', `${targetId}: 🛡️ Blocked! ${perfect ? '⚡ PERFECT!' : ''}`);
+      }
+
+      if (perfect && attackerId) {
+        const attacker = state.players[attackerId];
+        attacker.stunUntil = now + PLAYER_CFG.stunDuration;
+        if (attacker.windUp) {
+          logEvent('cast', `${attackerId}: ❌ ${SPELLS_DATA[attacker.windUp.spellId].name} cancelled (stunned)`);
+          attacker.windUp = null;
+        }
+        logEvent('hit', `${attackerId}: 😵 Stunned for ${PLAYER_CFG.stunDuration / 1000}s!`);
+      }
+
+      checkWinner(now);
+    }
+
+    function localTick() {
+      if (state.winner) return;
+      const now = Date.now();
+
+      for (const pid of state.playerIds) {
+        const player = state.players[pid];
+        if (player.windUp && now >= player.windUp.endsAt) {
+          const spell = SPELLS_DATA[player.windUp.spellId];
+          const sid = player.windUp.spellId;
+          player.windUp = null;
+
+          if (sid === 'heal') {
+            const healed = Math.min(spell.heal, PLAYER_CFG.maxHp - player.hp);
+            player.hp += healed;
+            logEvent('heal', `${pid}: 💚 Healed +${healed} HP (${player.hp})`);
+          } else {
+            const oppId = pid === 'you' ? 'dummy' : 'you';
+            if (sid === 'ultimate') {
+              const opp = state.players[oppId];
+              if (now < opp.blockUntil) {
+                const timeSince = now - opp.blockStartedAt;
+                if (timeSince <= PLAYER_CFG.perfectBlockWindow) {
+                  logEvent('block', `${oppId}: 🛡️⚡ PERFECT BLOCK vs Ultimate! 0 damage!`);
+                  player.stunUntil = now + PLAYER_CFG.ultimateStunDuration;
+                  logEvent('hit', `${pid}: 😵 Stunned for ${PLAYER_CFG.ultimateStunDuration / 1000}s!`);
+                } else {
+                  opp.hp = Math.max(0, opp.hp - spell.chipDamage);
+                  logEvent('hit', `${oppId}: 💥 Ultimate chip damage: -${spell.chipDamage} HP (${opp.hp})`);
+                }
+              } else {
+                opp.hp = Math.max(0, opp.hp - spell.damage);
+                logEvent('hit', `${oppId}: 💥💥💥 ULTIMATE! -${spell.damage} HP (${opp.hp})`);
+              }
+            } else {
+              localApplyDamage(oppId, spell.damage, spell.blockable, now, pid);
+            }
+          }
+        }
+      }
+
+      // Sudden death
+      if (now - state.startedAt >= PLAYER_CFG.suddenDeathTime) {
+        for (const pid of state.playerIds) {
+          state.players[pid].hp = Math.max(0, state.players[pid].hp - PLAYER_CFG.suddenDeathDps * 0.05);
+        }
+      }
+
+      checkWinner(now);
+      updateUI();
+    }
+
+    function checkWinner(now) {
+      const dead = state.playerIds.filter(pid => state.players[pid].hp <= 0);
+      if (dead.length > 0 && !state.winner) {
+        if (dead.length === 2) {
+          state.winner = 'draw';
+          logEvent('end', '🤝 DRAW!');
+        } else {
+          state.winner = state.playerIds.find(pid => state.players[pid].hp > 0);
+          logEvent('end', `🏆 ${state.winner.toUpperCase()} WINS!`);
+        }
+        showOverlay();
+      }
+    }
+
+    // ─── UI ───
+    const els = {
+      yourHpBar: document.getElementById('yourHpBar'),
+      yourHpText: document.getElementById('yourHpText'),
+      yourManaBar: document.getElementById('yourManaBar'),
+      yourManaText: document.getElementById('yourManaText'),
+      yourStatus: document.getElementById('yourStatus'),
+      yourWindup: document.getElementById('yourWindup'),
+      yourWindupFill: document.getElementById('yourWindupFill'),
+      enemyHpBar: document.getElementById('enemyHpBar'),
+      enemyHpText: document.getElementById('enemyHpText'),
+      enemyManaBar: document.getElementById('enemyManaBar'),
+      enemyManaText: document.getElementById('enemyManaText'),
+      enemyStatus: document.getElementById('enemyStatus'),
+      enemyWindup: document.getElementById('enemyWindup'),
+      enemyWindupFill: document.getElementById('enemyWindupFill'),
+    };
+
+    function updateUI() {
+      const now = Date.now();
+      for (const [pid, prefix] of [['you', 'your'], ['dummy', 'enemy']]) {
+        const p = state.players[pid];
+        const mana = getLocalMana(p, now);
+
+        els[prefix + 'HpBar'].style.width = (p.hp / PLAYER_CFG.maxHp * 100) + '%';
+        els[prefix + 'HpText'].textContent = `${Math.round(p.hp)} / ${PLAYER_CFG.maxHp}`;
+        els[prefix + 'ManaBar'].style.width = (mana / PLAYER_CFG.maxMana * 100) + '%';
+        els[prefix + 'ManaText'].textContent = `${mana.toFixed(1)} / ${PLAYER_CFG.maxMana}`;
+
+        // Status
+        let status = '';
+        if (now < p.stunUntil) status = '<span class="status-stun">😵 STUNNED</span>';
+        else if (now < p.blockUntil) status = '<span class="status-block">🛡️ BLOCKING</span>';
+        else if (p.windUp) status = `<span class="status-windup">⚡ ${SPELLS_DATA[p.windUp.spellId].name}...</span>`;
+        els[prefix + 'Status'].innerHTML = status;
+
+        // Wind-up bar
+        if (p.windUp) {
+          const spell = SPELLS_DATA[p.windUp.spellId];
+          const startedAt = p.windUp.endsAt - spell.windUp;
+          const progress = Math.min(1, (now - startedAt) / spell.windUp);
+          els[prefix + 'Windup'].style.display = 'block';
+          els[prefix + 'WindupFill'].style.width = (progress * 100) + '%';
+        } else {
+          els[prefix + 'Windup'].style.display = 'none';
+        }
+      }
+
+      // Update button states
+      updateButtons();
+    }
+
+    // ─── Spell buttons ───
+    const spellsPanel = document.getElementById('spellsPanel');
+    const spellOrder = ['zap', 'block', 'fireball', 'lightning', 'heal', 'ultimate'];
+
+    function buildButtons() {
+      spellsPanel.innerHTML = '';
+      for (const sid of spellOrder) {
+        const s = SPELLS_DATA[sid];
+        const btn = document.createElement('button');
+        btn.className = 'spell-btn';
+        btn.dataset.spell = sid;
+        btn.innerHTML = `
+          <div><strong>${s.name}</strong></div>
+          <div class="cost">${s.cost > 0 ? s.cost + ' mana' : 'free'}</div>
+          <div class="dmg">${s.damage > 0 ? s.damage + ' dmg' : s.heal > 0 ? '+' + s.heal + ' HP' : 'shield'}</div>
+        `;
+        btn.addEventListener('click', () => localTryCast('you', sid));
+        spellsPanel.appendChild(btn);
+      }
+    }
+
+    function updateButtons() {
+      const now = Date.now();
+      const p = state.players.you;
+      const mana = getLocalMana(p, now);
+
+      for (const btn of spellsPanel.children) {
+        const sid = btn.dataset.spell;
+        const spell = SPELLS_DATA[sid];
+        let disabled = false;
+
+        if (state.winner) disabled = true;
+        else if (now < p.stunUntil) disabled = true;
+        else if (p.cooldowns[sid] && now < p.cooldowns[sid]) disabled = true;
+        else if (!spell.instant && p.windUp) disabled = true;
+        else if (mana < spell.cost) disabled = true;
+
+        btn.disabled = disabled;
+      }
+    }
+
+    // ─── Event log ───
+    const eventLog = document.getElementById('eventLog');
+    function logEvent(type, text) {
+      const div = document.createElement('div');
+      div.className = `log-entry log-${type}`;
+      div.textContent = text;
+      eventLog.prepend(div);
+      // Keep max 50 entries
+      while (eventLog.children.length > 50) eventLog.removeChild(eventLog.lastChild);
+    }
+
+    // ─── Overlay ───
+    const overlay = document.getElementById('overlay');
+    const overlayTitle = document.getElementById('overlayTitle');
+    function showOverlay() {
+      if (state.winner === 'you') {
+        overlayTitle.textContent = '🏆 YOU WIN!';
+        overlayTitle.className = 'win';
+      } else if (state.winner === 'draw') {
+        overlayTitle.textContent = '🤝 DRAW!';
+        overlayTitle.className = '';
+      } else {
+        overlayTitle.textContent = '💀 YOU LOSE!';
+        overlayTitle.className = 'lose';
+      }
+      overlay.classList.add('show');
+    }
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      overlay.classList.remove('show');
+      startGame();
+    });
+
+    // ─── Start ───
+    function startGame() {
+      state = createLocalMatch();
+      eventLog.innerHTML = '';
+      buildButtons();
+      logEvent('cast', '⚔️ Battle started! Cast spells to defeat the dummy.');
+      if (tickTimer) clearInterval(tickTimer);
+      tickTimer = setInterval(() => { localTick(); }, 50);
+      updateUI();
+    }
+
+    startGame();
+  </script>
+</body>
+</html>
