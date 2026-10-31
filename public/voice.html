@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mage Duel – Voice Spike</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #0a0a1a;
+      color: #e0e0ff;
+      padding: 20px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 1.8rem;
+      color: #ff6600;
+      text-align: center;
+      margin-bottom: 5px;
+    }
+    .desc {
+      text-align: center;
+      color: #8888cc;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #1a1a3a;
+      color: #e0e0ff;
+      font-size: 1rem;
+    }
+    #micBtn {
+      padding: 14px 28px;
+      font-size: 1.3rem;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: all 0.2s;
+    }
+    #micBtn.off {
+      background: #cc3333;
+      color: white;
+    }
+    #micBtn.on {
+      background: #00cc66;
+      color: white;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 204, 102, 0.4); }
+      50% { box-shadow: 0 0 0 12px rgba(0, 204, 102, 0); }
+    }
+
+    /* No support message */
+    #noSupport {
+      display: none;
+      text-align: center;
+      padding: 20px;
+      background: #331111;
+      border: 2px solid #cc3333;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      color: #ff6666;
+    }
+
+    /* Live heard text */
+    #liveBox {
+      background: #1a1a3a;
+      border: 2px solid #333366;
+      border-radius: 12px;
+      padding: 20px;
+      min-height: 80px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    #liveInterim {
+      font-size: 1.5rem;
+      color: #ffcc44;
+      font-style: italic;
+    }
+    #liveFinal {
+      font-size: 1.8rem;
+      color: #00cc66;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+
+    /* Spell phrases reference */
+    .spells {
+      background: #111133;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+    .spells h3 {
+      color: #ff9944;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .spell-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-bottom: 1px solid #222244;
+      font-size: 0.95rem;
+    }
+    .spell-row:last-child { border-bottom: none; }
+    .spell-name { color: #ff6600; font-weight: bold; }
+    .spell-phrase { color: #aaaadd; }
+
+    /* Attempt log */
+    #logSection {
+      margin-top: 20px;
+    }
+    #logSection h3 {
+      color: #ff9944;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th {
+      background: #222244;
+      padding: 8px;
+      text-align: left;
+      color: #ff9944;
+    }
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #222244;
+    }
+    .match { color: #00cc66; }
+    .nomatch { color: #cc3333; }
+
+    /* Copy button */
+    #copyBtn {
+      display: block;
+      margin: 15px auto 0;
+      padding: 10px 20px;
+      background: #333366;
+      border: 1px solid #5555aa;
+      color: #e0e0ff;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    #copyBtn:hover { background: #444488; }
+
+    /* Back link */
+    .back {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .back a {
+      color: #ff9944;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 Voice Spike Test</h1>
+  <p class="desc">
+    Test each incantation 3 times: calm, shouting, and in a noisy room.<br>
+    The log below records what the browser heard so we can tune the matcher.
+  </p>
+
+  <div id="noSupport">
+    ⚠️ Your browser doesn't support the Web Speech API.<br>
+    Try Chrome on Android or Chrome on desktop.<br>
+    The game will still work with typed/tap input.
+  </div>
+
+  <div class="controls">
+    <select id="langSelect">
+      <option value="en-US">English (US)</option>
+      <option value="en-IN">English (India)</option>
+      <option value="en-GB">English (UK)</option>
+      <option value="en-AU">English (Australia)</option>
+    </select>
+    <button id="micBtn" class="off">🎤 Start Listening</button>
+  </div>
+
+  <div id="liveBox">
+    <div id="liveInterim">Press the button and speak...</div>
+    <div id="liveFinal"></div>
+  </div>
+
+  <div class="spells">
+    <h3>Say these phrases:</h3>
+    <div class="spell-row">
+      <span class="spell-name">Zap</span>
+      <span class="spell-phrase">"Zap!"</span>
+    </div>
+    <div class="spell-row">
+      <span class="spell-name">Block</span>
+      <span class="spell-phrase">"Nope!"</span>
+    </div>
+    <div class="spell-row">
+      <span class="spell-name">Fireball</span>
+      <span class="spell-phrase">"Eat flames!" or "Burn!"</span>
+    </div>
+    <div class="spell-row">
+      <span class="spell-name">Lightning</span>
+      <span class="spell-phrase">"Thunder strike!"</span>
+    </div>
+    <div class="spell-row">
+      <span class="spell-name">Heal</span>
+      <span class="spell-phrase">"Mom's soup!"</span>
+    </div>
+    <div class="spell-row">
+      <span class="spell-name">Ultimate</span>
+      <span class="spell-phrase">"Final explosion!"</span>
+    </div>
+  </div>
+
+  <div id="logSection">
+    <h3>Attempt Log</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Heard (final)</th>
+          <th>Matched?</th>
+          <th>Lang</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="logBody"></tbody>
+    </table>
+    <button id="copyBtn">📋 Copy Log to Clipboard</button>
+  </div>
+
+  <div class="back"><a href="/">← Back to Mage Duel</a></div>
+
+  <script>
+    // ─── Spell aliases (same list we'll use in spells.js) ───
+    const SPELL_ALIASES = {
+      zap:       ['zap', 'zapp', 'sap', 'zip', 'zep', 'cap', 'tap'],
+      block:     ['nope', 'no', 'nop', 'know', 'nah', 'noup'],
+      fireball:  ['eat flames', 'it flames', 'eat flame', 'burn', 'born', 'bern', 'flames', 'eat flash'],
+      lightning: ['thunder strike', 'thunderstrike', 'thunder strikes', 'under strike', 'thunder', 'thunder struck'],
+      heal:      ['moms soup', 'mums soup', 'mom soup', 'mama soup', 'mom\'s soup', 'mum soup', 'mom so'],
+      ultimate:  ['final explosion', 'ultimate explosion', 'ultimate final explosion', 'final expo', 'vinyl explosion']
+    };
+
+    // Simple fuzzy match: lowercase, strip punctuation, check if any alias
+    // is contained in the heard text
+    function matchSpell(text) {
+      const clean = text.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+      for (const [spell, aliases] of Object.entries(SPELL_ALIASES)) {
+        for (const alias of aliases) {
+          if (clean.includes(alias)) return spell;
+        }
+      }
+      return null;
+    }
+
+    // ─── Web Speech API setup ───
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const micBtn = document.getElementById('micBtn');
+    const liveInterim = document.getElementById('liveInterim');
+    const liveFinal = document.getElementById('liveFinal');
+    const logBody = document.getElementById('logBody');
+    const langSelect = document.getElementById('langSelect');
+    const noSupport = document.getElementById('noSupport');
+    const copyBtn = document.getElementById('copyBtn');
+
+    let listening = false;
+    let recognition = null;
+    let attemptCount = 0;
+    const logEntries = [];
+
+    if (!SpeechRecognition) {
+      noSupport.style.display = 'block';
+      micBtn.disabled = true;
+      micBtn.textContent = '🚫 Not Supported';
+    }
+
+    function createRecognition() {
+      const r = new SpeechRecognition();
+      r.lang = langSelect.value;
+      r.interimResults = true;
+      r.continuous = true;
+      r.maxAlternatives = 1;
+
+      r.onresult = (event) => {
+        let interim = '';
+        let final = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            final += transcript;
+          } else {
+            interim += transcript;
+          }
+        }
+
+        // Show interim results (what it's hearing right now)
+        if (interim) {
+          liveInterim.textContent = `Hearing: "${interim}"`;
+          // Try matching interim too (for fast feedback)
+          const interimMatch = matchSpell(interim);
+          if (interimMatch) {
+            liveInterim.textContent += ` → 🎯 ${interimMatch.toUpperCase()}!`;
+          }
+        }
+
+        // Log final results
+        if (final) {
+          const matched = matchSpell(final);
+          liveFinal.textContent = `"${final.trim()}"`;
+          liveInterim.textContent = matched
+            ? `✅ Matched: ${matched.toUpperCase()}`
+            : '❌ No match';
+
+          attemptCount++;
+          const entry = {
+            num: attemptCount,
+            heard: final.trim(),
+            matched: matched || '—',
+            lang: langSelect.value,
+            time: new Date().toLocaleTimeString()
+          };
+          logEntries.push(entry);
+
+          const row = document.createElement('tr');
+          const matchClass = matched ? 'match' : 'nomatch';
+          row.innerHTML = `
+            <td>${entry.num}</td>
+            <td>${entry.heard}</td>
+            <td class="${matchClass}">${matched ? matched.toUpperCase() : '❌ none'}</td>
+            <td>${entry.lang}</td>
+            <td>${entry.time}</td>
+          `;
+          logBody.prepend(row);
+        }
+      };
+
+      r.onerror = (event) => {
+        console.error('Speech error:', event.error);
+        if (event.error === 'not-allowed') {
+          liveInterim.textContent = '🚫 Mic permission denied. Check browser settings.';
+          stopListening();
+        } else if (event.error === 'no-speech') {
+          liveInterim.textContent = 'No speech detected. Try again...';
+        }
+      };
+
+      r.onend = () => {
+        // Auto-restart if we're supposed to be listening
+        if (listening) {
+          try { r.start(); } catch (e) { /* already started */ }
+        }
+      };
+
+      return r;
+    }
+
+    function startListening() {
+      if (!SpeechRecognition) return;
+      recognition = createRecognition();
+      try {
+        recognition.start();
+        listening = true;
+        micBtn.textContent = '🔴 Listening...';
+        micBtn.className = 'on';
+        liveInterim.textContent = 'Listening... say a spell!';
+        liveFinal.textContent = '';
+      } catch (e) {
+        console.error('Failed to start:', e);
+      }
+    }
+
+    function stopListening() {
+      listening = false;
+      if (recognition) {
+        recognition.stop();
+        recognition = null;
+      }
+      micBtn.textContent = '🎤 Start Listening';
+      micBtn.className = 'off';
+      liveInterim.textContent = 'Press the button and speak...';
+    }
+
+    micBtn.addEventListener('click', () => {
+      if (listening) {
+        stopListening();
+      } else {
+        startListening();
+      }
+    });
+
+    // When language changes, restart if currently listening
+    langSelect.addEventListener('change', () => {
+      if (listening) {
+        stopListening();
+        startListening();
+      }
+    });
+
+    // Copy log to clipboard
+    copyBtn.addEventListener('click', () => {
+      if (logEntries.length === 0) {
+        alert('No attempts logged yet!');
+        return;
+      }
+      let text = 'Attempt | Heard | Matched | Lang | Time\n';
+      text += '--------|-------|---------|------|-----\n';
+      logEntries.forEach(e => {
+        text += `${e.num} | ${e.heard} | ${e.matched} | ${e.lang} | ${e.time}\n`;
+      });
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.textContent = '✅ Copied!';
+        setTimeout(() => { copyBtn.textContent = '📋 Copy Log to Clipboard'; }, 2000);
+      }).catch(() => {
+        // Fallback: select and copy
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        copyBtn.textContent = '✅ Copied!';
+        setTimeout(() => { copyBtn.textContent = '📋 Copy Log to Clipboard'; }, 2000);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mage Duel</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #0a0a1a;
+      color: #e0e0ff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 3rem;
+      color: #ff6600;
+      text-shadow: 0 0 20px rgba(255, 102, 0, 0.5);
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      font-size: 1.1rem;
+      color: #8888cc;
+      margin-bottom: 40px;
+    }
+    #status {
+      font-size: 1.3rem;
+      padding: 20px 40px;
+      border-radius: 12px;
+      background: #1a1a3a;
+      border: 2px solid #333366;
+      margin-bottom: 20px;
+    }
+    #status.connected {
+      border-color: #00cc66;
+      color: #00cc66;
+    }
+    #status.disconnected {
+      border-color: #cc3333;
+      color: #cc3333;
+    }
+    #latency {
+      font-size: 0.9rem;
+      color: #6666aa;
+      margin-bottom: 30px;
+    }
+    .links {
+      margin-top: 20px;
+    }
+    .links a {
+      color: #ff9944;
+      text-decoration: none;
+      font-size: 1.1rem;
+      padding: 10px 20px;
+      border: 1px solid #ff9944;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    .links a:hover {
+      background: rgba(255, 153, 68, 0.15);
+    }
+  </style>
+</head>
+<body>
+  <h1>⚔️ MAGE DUEL ⚔️</h1>
+  <p class="subtitle">Shout spells. Block attacks. Become legendary.</p>
+  <div id="status" class="disconnected">Connecting...</div>
+  <div id="latency"></div>
+  <div class="links">
+    <a href="/voice.html">🎤 Voice Spike Test</a>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const statusEl = document.getElementById('status');
+    const latencyEl = document.getElementById('latency');
+
+    socket.on('connect', () => {
+      statusEl.textContent = '✅ Connected to server';
+      statusEl.className = 'connected';
+      measureLatency();
+    });
+
+    socket.on('disconnect', () => {
+      statusEl.textContent = '❌ Disconnected';
+      statusEl.className = 'disconnected';
+      latencyEl.textContent = '';
+    });
+
+    function measureLatency() {
+      const start = Date.now();
+      socket.emit('ping_server', start, (response) => {
+        const rtt = Date.now() - start;
+        const serverTime = new Date(response.serverTime).toLocaleTimeString();
+        latencyEl.textContent = `Latency: ${rtt}ms | Server time: ${serverTime}`;
+      });
+    }
+
+    // Re-measure every 5 seconds
+    setInterval(() => {
+      if (socket.connected) measureLatency();
+    }, 5000);
+  </script>
+</body>
+</html>
