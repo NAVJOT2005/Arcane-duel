@@ -200,12 +200,12 @@
     }
     .interactive { pointer-events: auto; }
 
-    /* Voice & Typed feedback */
+    /* Voice feedback */
     .voice-control-box {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-      max-width: 48%;
+      align-items: center;
+      gap: 6px;
+      max-width: 52%;
     }
     .hud-btn {
       font-family: inherit;
@@ -243,22 +243,6 @@
       color: #cbd5e1;
     }
     .heard-chip strong { color: #fde047; }
-
-    .typed-row {
-      display: flex;
-      gap: 4px;
-    }
-    .typed-input {
-      font-family: inherit;
-      background: rgba(5, 4, 16, 0.85);
-      border: 1px solid #7a6cf0;
-      color: #f8fafc;
-      padding: 4px 8px;
-      font-size: 0.9em;
-      outline: none;
-      width: 130px;
-    }
-    .typed-input:focus { border-color: #f97316; }
 
     /* Spell Buttons Grid (5 equal spells per class) */
     .spell-grid-hud {
@@ -485,7 +469,7 @@
       <!-- Header Center Menu Buttons -->
       <div style="display: flex; gap: 6px; pointer-events: auto;">
         <button id="btnOpenRules" class="hud-btn" style="padding: 2px 8px; font-size: 0.8em;">📖 RULES</button>
-        <div id="netPill" class="heard-chip" style="color: #4ade80;">WASD + MOUSE</div>
+        <div id="netPill" class="heard-chip" style="color: #4ade80;">WASD + RIGHT-CLICK AIM</div>
       </div>
 
       <!-- OPPONENT (Right) -->
@@ -520,18 +504,12 @@
 
     <!-- Bottom HUD: Voice Control + 5 Spell Cards -->
     <div class="bottom-bar">
-      <!-- Voice Toggle & Typed Fallback -->
+      <!-- Voice Toggle -->
       <div class="voice-control-box interactive">
-        <div style="display: flex; gap: 6px;">
-          <button id="btnVoiceToggle" class="hud-btn">
-            <span id="micIcon">🎤</span> <span id="micStatusText">VOICE OFF</span>
-          </button>
-          <div class="heard-chip" id="heardDisplay" style="flex: 1;">WASD move • Mouse aim • Shout or tap</div>
-        </div>
-        <form id="typedForm" class="typed-row" onsubmit="return false;">
-          <input type="text" id="typedInput" class="typed-input" placeholder='Type "Burn!", "Nope!"...' autocomplete="off" />
-          <button type="submit" class="hud-btn" style="padding: 2px 8px;">CAST</button>
-        </form>
+        <button id="btnVoiceToggle" class="hud-btn">
+          <span id="micIcon">🎤</span> <span id="micStatusText">VOICE OFF</span>
+        </button>
+        <div class="heard-chip" id="heardDisplay" style="flex: 1;">WASD move • Right-Click or Drag to aim • Voice or Tap spells</div>
       </div>
 
       <!-- 5 Equal Spell Action Buttons -->
@@ -585,13 +563,14 @@
   <div id="rulesModal" class="modal-backdrop">
     <div class="modal-box" style="text-align: left;">
       <h2 style="text-align: center;">⚡ HOW TO PLAY (30s)</h2>
-      <p style="text-align: center; color: #93c5fd;">Reduce rival's 100 HP to 0 by shouting incantations, typing, or tapping!</p>
+      <p style="text-align: center; color: #93c5fd;">Reduce rival's 100 HP to 0 by shouting incantations or tapping spells!</p>
       
       <div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
-        <div style="color: #f97316; font-weight: bold;">1. THIRD-PERSON MOVEMENT & COMBAT:</div>
-        <div style="font-size: 0.9em;">• <strong>WASD / D-Pad</strong>: Move around the arena to dodge and reposition!</div>
-        <div style="font-size: 0.9em;">• <strong>Third-Person Camera</strong>: Over-the-shoulder POV behind your character!</div>
-        <div style="font-size: 0.9em;">• <strong>Wind-Up Bars</strong>: Watch the live charge bar fill above player HP!</div>
+        <div style="color: #f97316; font-weight: bold;">1. THIRD-PERSON MOVEMENT & AIMING:</div>
+        <div style="font-size: 0.9em;">• <strong>WASD</strong>: Move in any direction relative to your facing angle!</div>
+        <div style="font-size: 0.9em;">• <strong>Hold Right-Click (or drag arena)</strong>: Smoothly rotate your character & camera aim!</div>
+        <div style="font-size: 0.9em;">• <strong>Q / E or Arrow Keys</strong>: Keyboard turning fallback!</div>
+        <div style="font-size: 0.9em;">• <strong>Click Spells / Voice</strong>: Moving your mouse freely to click UI never moves your character!</div>
       </div>
 
       <div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
@@ -1434,8 +1413,6 @@
   const heardDisplay = document.getElementById('heardDisplay');
   const btnVoiceToggle = document.getElementById('btnVoiceToggle');
   const micStatusText = document.getElementById('micStatusText');
-  const typedInput = document.getElementById('typedInput');
-  const typedForm = document.getElementById('typedForm');
   const disconnectBanner = document.getElementById('disconnectBanner');
   const disconnectSec = document.getElementById('disconnectSec');
   const blindnessOverlay = document.getElementById('blindnessOverlay');
@@ -1559,6 +1536,22 @@
     oppPos.z = 0;
     myYaw = isHost ? 0 : Math.PI;
     oppYaw = isHost ? Math.PI : 0;
+    lastSentPos.x = myPos.x;
+    lastSentPos.z = myPos.z;
+    lastSentYaw = myYaw;
+
+    // Position camera immediately behind player on duel start
+    const fwdX = Math.cos(myYaw), fwdZ = -Math.sin(myYaw);
+    const cosP = Math.cos(camPitch), sinP = Math.sin(camPitch);
+    const idealDist = 6.2;
+    camPos.x = myPos.x - fwdX * idealDist * cosP;
+    camPos.z = myPos.z - fwdZ * idealDist * cosP;
+    camPos.y = 1.8 + idealDist * sinP;
+    camLook.x = myPos.x + fwdX * 12.0;
+    camLook.y = 1.8 - sinP * 2.5;
+    camLook.z = myPos.z + fwdZ * 12.0;
+    camera.position.set(camPos.x, camPos.y, camPos.z);
+    camera.lookAt(camLook.x, camLook.y, camLook.z);
 
     document.getElementById('youHudName').textContent = `YOU (${window.CLASSES[myMageClass].name})`;
     document.getElementById('oppHudName').textContent = `${opp.name} (${window.CLASSES[oppMageClass].name})`;
@@ -1870,92 +1863,85 @@
     }
   });
 
-  // Typed Spell Fallback
-  typedForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const text = typedInput.value.trim();
-    if (!text) return;
-    const classCfg = window.CLASSES[myMageClass] || window.CLASSES.fire;
-    const matched = window.matchSpell(text, classCfg.spells);
-    if (matched) {
-      heardDisplay.innerHTML = `Typed: "<strong>${text}</strong>" &rarr; ${window.SPELLS[matched].name}`;
-      socket.emit('cast', { spell: matched, chant: text, source: 'text' });
-    } else {
-      heardDisplay.innerHTML = `❌ No match for "<em>${text}</em>"`;
-      socket.emit('cast', { text: text, source: 'text' });
-    }
-    typedInput.value = '';
-  });
-
   // ─── 7. INDEPENDENT MOUSE-LOOK & ARENA CONTROLS ───
   let myYaw = 0;
   let oppYaw = Math.PI;
   let camPitch = 0.32; // ~18 degrees above horizon
-  let isPointerLocked = false;
   let isDraggingMouse = false;
+  let dragButton = -1; // 0 = Left, 2 = Right
   let lastMouseX = 0, lastMouseY = 0;
+  let camPos = { x: 0, y: 5.0, z: 13 };
+  let camLook = { x: 0, y: 1.8, z: 0 };
+  let lastSentPos = { x: 0, z: 0 };
+  let lastSentYaw = 0;
 
-  document.addEventListener('pointerlockchange', () => {
-    isPointerLocked = (document.pointerLockElement === stage || document.pointerLockElement === renderer.domElement);
-    const np = document.getElementById('netPill');
-    if (np) np.textContent = isPointerLocked ? 'MOUSE LOCKED (ESC)' : 'WASD + MOUSE';
-  });
+  // Prevent right-click context menu in the duel arena so right-click drag is seamless
+  stage.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  // Click canvas/stage to lock pointer for seamless 360 mouse-look (like standard PC games)
-  stage.addEventListener('click', (e) => {
-    if (gameHud.style.display !== 'none' && !e.target.closest('button, input, form, a')) {
-      try {
-        if (!isPointerLocked && stage.requestPointerLock) {
-          stage.requestPointerLock();
-        }
-      } catch (err) {}
-    }
-  });
-
+  // Mouse Look Dragging:
+  // - Right-Click (Hold): seamlessly rotates character & camera anywhere on screen
+  // - Left-Click (Hold): rotates when clicked on the 3D scene (outside interactive HUD buttons)
+  // - Moving mouse freely (hovering/clicking Voice or Spells) NEVER turns character or camera!
   window.addEventListener('mousedown', (e) => {
-    if (e.target.closest('button, input, form, a')) return;
-    isDraggingMouse = true;
-    lastMouseX = e.clientX;
-    lastMouseY = e.clientY;
-  });
-
-  window.addEventListener('mouseup', () => {
-    isDraggingMouse = false;
-  });
-
-  // Mouse horizontal movement turns character and camera smoothly left & right
-  window.addEventListener('mousemove', (e) => {
     if (gameHud.style.display === 'none') return;
-    let dx = 0, dy = 0;
-    if (isPointerLocked) {
-      dx = e.movementX;
-      dy = e.movementY;
-    } else if (isDraggingMouse) {
-      dx = e.clientX - lastMouseX;
-      dy = e.clientY - lastMouseY;
-      lastMouseX = e.clientX;
-      lastMouseY = e.clientY;
-    } else {
+
+    // Ignore if clicking HUD buttons, controls, or modals
+    if (e.target.closest('button, .voice-control-box, .spell-grid-hud, .top-bar, .modal-backdrop')) {
       return;
     }
 
+    if (e.button === 2 || e.button === 0) {
+      isDraggingMouse = true;
+      dragButton = e.button;
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+      const np = document.getElementById('netPill');
+      if (np) np.textContent = 'AIMING...';
+    }
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (isDraggingMouse && (e.button === dragButton || e.button === 0 || e.button === 2)) {
+      isDraggingMouse = false;
+      dragButton = -1;
+      const np = document.getElementById('netPill');
+      if (np) np.textContent = 'WASD + RIGHT-CLICK AIM';
+    }
+  });
+
+  // Mouse drag rotates character and camera smoothly
+  window.addEventListener('mousemove', (e) => {
+    if (gameHud.style.display === 'none' || !isDraggingMouse) return;
+
+    const dx = e.clientX - lastMouseX;
+    const dy = e.clientY - lastMouseY;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+
     if (dx !== 0 || dy !== 0) {
-      const SENSITIVITY = 0.0035;
-      myYaw -= dx * SENSITIVITY;
-      camPitch = Math.max(0.06, Math.min(0.85, camPitch + dy * (SENSITIVITY * 0.75)));
+      // Calibrated sensitivity (smooth and controlled, no over-rotation)
+      const SENSITIVITY_X = 0.0016;
+      const SENSITIVITY_Y = 0.0010;
+      myYaw -= dx * SENSITIVITY_X;
+      camPitch = Math.max(0.06, Math.min(0.85, camPitch + dy * SENSITIVITY_Y));
     }
   });
 
   // Touch screen swipe to look
   let lastTouchX = 0, lastTouchY = 0;
+  let isTouching = false;
   stage.addEventListener('touchstart', (e) => {
+    if (gameHud.style.display === 'none') return;
+    if (e.target.closest('button, .voice-control-box, .spell-grid-hud, .top-bar, .modal-backdrop')) return;
     if (e.touches.length > 0) {
+      isTouching = true;
       lastTouchX = e.touches[0].clientX;
       lastTouchY = e.touches[0].clientY;
     }
   }, { passive: true });
+
   stage.addEventListener('touchmove', (e) => {
-    if (gameHud.style.display === 'none') return;
+    if (!isTouching || gameHud.style.display === 'none') return;
     if (e.touches.length > 0) {
       const tx = e.touches[0].clientX;
       const ty = e.touches[0].clientY;
@@ -1963,10 +1949,12 @@
       const dy = ty - lastTouchY;
       lastTouchX = tx;
       lastTouchY = ty;
-      myYaw -= dx * 0.006;
-      camPitch = Math.max(0.06, Math.min(0.85, camPitch + dy * 0.004));
+      myYaw -= dx * 0.003;
+      camPitch = Math.max(0.06, Math.min(0.85, camPitch + dy * 0.002));
     }
   }, { passive: true });
+
+  stage.addEventListener('touchend', () => { isTouching = false; }, { passive: true });
 
   // ─── 8. 3D RENDER, MOVEMENT & THIRD-PERSON CAMERA LOOP ───
   let lastTime = performance.now() / 1000;
@@ -1989,8 +1977,8 @@
 
     // ─── Keyboard Aiming (Left/Right Arrows or Q/E) ───
     if (gameHud.style.display !== 'none') {
-      if (keys['arrowleft'] || keys['q']) myYaw += 3.2 * dt;
-      if (keys['arrowright'] || keys['e']) myYaw -= 3.2 * dt;
+      if (keys['arrowleft'] || keys['q']) myYaw += 2.4 * dt;
+      if (keys['arrowright'] || keys['e']) myYaw -= 2.4 * dt;
 
       // ─── Player Movement (WASD relative to Aim Direction) ───
       const fwdX = Math.cos(myYaw), fwdZ = -Math.sin(myYaw);
@@ -2011,12 +1999,17 @@
         // Expanded arena boundaries (-17.5 to 17.5, -10.5 to 10.5)
         myPos.x = Math.max(-17.5, Math.min(17.5, myPos.x));
         myPos.z = Math.max(-10.5, Math.min(10.5, myPos.z));
+      }
 
-        // Sync movement and rotation to server every 40ms
-        if (now - lastMoveSent > 0.04) {
-          lastMoveSent = now;
-          socket.emit('player_move', { x: myPos.x, z: myPos.z, rotY: myYaw });
-        }
+      // Sync position and aim rotation to server whenever changed
+      const posMoved = Math.hypot(myPos.x - lastSentPos.x, myPos.z - lastSentPos.z) > 0.02;
+      const rotMoved = Math.abs(myYaw - lastSentYaw) > 0.02;
+      if ((posMoved || rotMoved) && (now - lastMoveSent > 0.04)) {
+        lastMoveSent = now;
+        lastSentPos.x = myPos.x;
+        lastSentPos.z = myPos.z;
+        lastSentYaw = myYaw;
+        socket.emit('player_move', { x: myPos.x, z: myPos.z, rotY: myYaw });
       }
     }
 
@@ -2080,43 +2073,74 @@
     shake = Math.max(0, shake - rdt * 0.8);
     push = Math.max(0, push - rdt * 0.6);
 
-    // ─── TRUE THIRD-PERSON CAMERA WITH WALL-COLLISION CLAMPING ───
+    // ─── SMOOTH THIRD-PERSON SPRING-ARM CAMERA ───
     if (gameHud.style.display !== 'none') {
       const fwdX = Math.cos(myYaw), fwdZ = -Math.sin(myYaw);
       const cosP = Math.cos(camPitch), sinP = Math.sin(camPitch);
       const idealDist = 6.2;
       const horizDist = idealDist * cosP;
-      const idealX = myPos.x - fwdX * horizDist;
-      const idealZ = myPos.z - fwdZ * horizDist;
       const idealY = 1.8 + idealDist * sinP;
 
       // Safe camera boundaries inside arena walls (Walls are at X: +-20.5, Z: +-13)
       const minCamX = -18.2, maxCamX = 18.2;
       const minCamZ = -11.2, maxCamZ = 11.2;
 
-      let targetCamX = Math.max(minCamX, Math.min(maxCamX, idealX));
-      let targetCamZ = Math.max(minCamZ, Math.min(maxCamZ, idealZ));
+      // Raycast along boom direction (-fwd) to smoothly shrink distance when near walls
+      const dirX = -fwdX * horizDist;
+      const dirZ = -fwdZ * horizDist;
 
-      // If camera was pushed by a wall, smoothly pull closer to player's back and elevate
-      const actualDist = Math.hypot(targetCamX - myPos.x, targetCamZ - myPos.z);
-      let targetCamY = idealY + Math.max(0, (horizDist - actualDist) * 0.4);
+      let scale = 1.0;
+      if (dirX < 0 && myPos.x + dirX < minCamX) {
+        scale = Math.min(scale, (minCamX - myPos.x) / dirX);
+      } else if (dirX > 0 && myPos.x + dirX > maxCamX) {
+        scale = Math.min(scale, (maxCamX - myPos.x) / dirX);
+      }
+      if (dirZ < 0 && myPos.z + dirZ < minCamZ) {
+        scale = Math.min(scale, (minCamZ - myPos.z) / dirZ);
+      } else if (dirZ > 0 && myPos.z + dirZ > maxCamZ) {
+        scale = Math.min(scale, (maxCamZ - myPos.z) / dirZ);
+      }
+      scale = Math.max(0.28, Math.min(1.0, scale));
 
-      // Smooth camera interpolation
-      camera.position.x += (targetCamX - camera.position.x) * Math.min(1, dt * 12) + (Math.random() - 0.5) * shake;
-      camera.position.y += (targetCamY - camera.position.y) * Math.min(1, dt * 12) + (Math.random() - 0.5) * shake;
-      camera.position.z += (targetCamZ - camera.position.z) * Math.min(1, dt * 12);
+      const actualDist = horizDist * scale;
+      const targetCamX = myPos.x - fwdX * actualDist;
+      const targetCamZ = myPos.z - fwdZ * actualDist;
+      const targetCamY = idealY + (1.0 - scale) * 0.9;
 
-      // Camera aims forward over player's shoulder in their aiming direction
-      const lookDist = 12.0;
-      camera.lookAt(myPos.x + fwdX * lookDist, 1.8 - sinP * 2.5, myPos.z + fwdZ * lookDist);
+      const targetLookX = myPos.x + fwdX * 12.0;
+      const targetLookY = 1.8 - sinP * 2.5;
+      const targetLookZ = myPos.z + fwdZ * 12.0;
+
+      // Exponential smoothing based on real frame time (buttery smooth glide)
+      const smoothFactor = 1.0 - Math.exp(-18.0 * rdt);
+      camPos.x += (targetCamX - camPos.x) * smoothFactor;
+      camPos.y += (targetCamY - camPos.y) * smoothFactor;
+      camPos.z += (targetCamZ - camPos.z) * smoothFactor;
+
+      camLook.x += (targetLookX - camLook.x) * smoothFactor;
+      camLook.y += (targetLookY - camLook.y) * smoothFactor;
+      camLook.z += (targetLookZ - camLook.z) * smoothFactor;
+
+      // Shake is an instantaneous displacement (does not accumulate into camPos!)
+      const shkX = (Math.random() - 0.5) * shake;
+      const shkY = (Math.random() - 0.5) * shake;
+      const shkZ = (Math.random() - 0.5) * shake * 0.5;
+
+      camera.position.set(camPos.x + shkX, camPos.y + shkY, camPos.z + shkZ);
+      camera.lookAt(camLook.x, camLook.y, camLook.z);
     } else {
       // Lobby showcase camera
-      camera.position.set(0, 5.0, 13);
+      camPos.x += (0 - camPos.x) * 0.05;
+      camPos.y += (5.0 - camPos.y) * 0.05;
+      camPos.z += (13 - camPos.z) * 0.05;
+      camera.position.set(camPos.x, camPos.y, camPos.z);
       camera.lookAt(0, 1.8, 0);
     }
 
     renderer.render(scene, camera);
   }
+
+  requestAnimationFrame(render3D);
 
   requestAnimationFrame(render3D);
 })();
