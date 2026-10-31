@@ -311,6 +311,8 @@ describe('inferno_nova (Ultimate)', () => {
     const events = tick(state, 3000);
     const hit = events.find(e => e.type === 'hit');
     assert.equal(hit.damage, 50);
+    assert.equal(hit.spell, 'inferno_nova');
+    assert.equal(hit.attacker, 'p1');
     assert.equal(state.players.p2.hp, 50);
   });
 

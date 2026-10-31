@@ -13,9 +13,17 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
+// Disable caching so both players/browser windows always get the newest version
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 // Serve static assets from /public and /shared
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/shared', express.static(path.join(__dirname, 'shared')));
+app.use(express.static(path.join(__dirname, 'public'), { etag: false, maxAge: 0 }));
+app.use('/shared', express.static(path.join(__dirname, 'shared'), { etag: false, maxAge: 0 }));
 
 const rooms = new Map();
 

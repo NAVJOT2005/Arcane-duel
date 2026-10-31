@@ -351,6 +351,8 @@ function tick(state, now) {
               events.push({
                 type: 'hit',
                 target: oppId,
+                attacker: pid,
+                spell: spellId,
                 damage: 0,
                 rawDamage: spell.damage,
                 blocked: true,
@@ -367,6 +369,8 @@ function tick(state, now) {
               events.push({
                 type: 'hit',
                 target: oppId,
+                attacker: pid,
+                spell: spellId,
                 damage: spell.chipDamage,
                 rawDamage: spell.damage,
                 blocked: true,
@@ -378,6 +382,8 @@ function tick(state, now) {
             events.push({
               type: 'hit',
               target: oppId,
+              attacker: pid,
+              spell: spellId,
               damage: spell.damage,
               rawDamage: spell.damage,
               blocked: false,
