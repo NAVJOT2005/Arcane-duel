@@ -251,6 +251,28 @@
       text-align: center;
     }
 
+    /* Connection state chip: connecting / reconnecting / offline. Sits above
+       everything because a dropped socket matters on every screen. */
+    #netChip {
+      display: none;
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 120;
+      padding: 6px 18px;
+      font-size: 0.82em;
+      letter-spacing: 0.12em;
+      color: #e9d5ff;
+      background: rgba(10, 8, 24, 0.94);
+      border: 2px solid #a855f7;
+      box-shadow: 0 0 18px rgba(168, 85, 247, 0.45);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #netChip.on { display: block; }
+    #netChip.bad { border-color: #f87171; color: #fecaca; box-shadow: 0 0 18px rgba(248, 113, 113, 0.4); }
+
     /* Bottom Combat Controls Bar */
     .bottom-bar {
       display: flex;
@@ -2050,10 +2072,26 @@
       <h2>SEARCHING THE ARENA</h2>
       <p id="quickStatusText" style="color: #9fe8f4;">Looking for another mage…</p>
       <div class="quick-dots"><span></span><span></span><span></span></div>
-      <p style="font-size: 0.85em; color: #8d84c8; margin-top: 4px;">Pairs you with the next player who searches.</p>
+      <p style="font-size: 0.85em; color: #8d84c8; margin-top: 4px;" id="quickHintText">Pairs you with the next player who searches.</p>
+      <button id="btnPracticeFromQueue" class="arc-btn" type="button" style="display: none; font-size: 0.85em; margin-top: 10px;">TRAIN VS DUMMY WHILE YOU WAIT</button>
       <button id="btnCancelQuick" class="arc-btn ghost" style="font-size: 0.85em; margin-top: 10px;">CANCEL</button>
     </div>
   </div>
+
+  <!-- ─── CONNECTION / SESSION NOTICE ─── -->
+  <div id="netModal" class="modal-backdrop">
+    <div class="modal-box arcane">
+      <span class="eyebrow">ARENA CONNECTION</span>
+      <h2 id="netModalTitle">ROOM NOT FOUND</h2>
+      <p id="netModalDesc">That arena has closed.</p>
+      <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+        <button id="btnNetCreate" class="arc-btn primary" type="button">CREATE NEW ROOM</button>
+        <button id="btnNetMenu" class="arc-btn ghost" type="button">BACK TO MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="netChip">RECONNECTING…</div>
 
   <!-- ─── DUEL MENU (ESC) ─── -->
   <div id="duelMenu" class="overlay-screen">
@@ -3450,6 +3488,15 @@
   const endModal = document.getElementById('endModal');
   const quickModal = document.getElementById('quickModal');
   const quickStatusText = document.getElementById('quickStatusText');
+  const quickHintText = document.getElementById('quickHintText');
+  const btnPracticeFromQueue = document.getElementById('btnPracticeFromQueue');
+  const waitingStatusText = document.getElementById('waitingStatusText');
+  const netModal = document.getElementById('netModal');
+  const netModalTitle = document.getElementById('netModalTitle');
+  const netModalDesc = document.getElementById('netModalDesc');
+  const btnNetCreate = document.getElementById('btnNetCreate');
+  const btnNetMenu = document.getElementById('btnNetMenu');
+  const netChip = document.getElementById('netChip');
   const btnCloseRules = document.getElementById('btnCloseRules');
   const btnCloseSettings = document.getElementById('btnCloseSettings');
   const btnRematch = document.getElementById('btnRematch');
@@ -4119,15 +4166,15 @@
             <li>A block absorbs all damage from blockable spells.</li>
             <li>Block within <strong>${perfect}s</strong> of impact for a <strong>PERFECT BLOCK</strong>: the attacker is stunned for <strong>${stunSec}s</strong> and their cast is cancelled.</li>
             <li>Parrying an ultimate stuns the caster for <strong>${ultStunSec}s</strong>; a normal block still takes <strong>${ult.chipDamage} chip damage</strong>.</li>
-            <li><strong>Thunder Strike ignores Block</strong> (${thunder.damage} damage).</li>
+            <li><strong>Thunder Strike ignores Block</strong> (${thunder.damage} damage), but it is a wind-up: land any unblocked hit on the caster and it is cancelled.</li>
           </ul>`)}
         ${ruleCard('5 · STATUS EFFECTS', `
           <ul>
             <li><strong>BURN</strong> — 2 damage every 0.8s for 2.5s.</li>
             <li><strong>CHILL</strong> — mana regeneration halved for 2.5s.</li>
-            <li><strong>BLIND</strong> — the arena closes in for 2s.</li>
-            <li><strong>TREMOR</strong> — the next spell gains 0.8s of cooldown.</li>
-            <li><strong>STONE ARMOUR</strong> — absorbs up to 16 damage.</li>
+            <li><strong>BLIND</strong> — the arena closes in on the blinded mage for 2s. A screen effect, not a stat change.</li>
+            <li><strong>TREMOR</strong> — the next spell that already has a cooldown gains 0.8s. Signature spells are unaffected.</li>
+            <li><strong>STONE ARMOUR</strong> — absorbs up to 16 damage from spells. Ultimates and sudden death ignore it.</li>
           </ul>`)}
         ${ruleCard('6 · YOUR KEYS', `
           <ul>
@@ -4547,7 +4594,143 @@
   function updateNetState() {
     const online = socket.connected;
     if (netDot) netDot.classList.toggle('on', online);
-    if (netLabel) netLabel.textContent = online ? 'CONNECTED TO THE ARENA' : 'OFFLINE — START THE SERVER';
+    if (netLabel) netLabel.textContent = online ? 'CONNECTED TO THE ARENA' : 'OFFLINE — RECONNECTING…';
+    if (online) setNetChip(null);
+  }
+
+  // ─── Session: the client half of the resume path ────────────────────────
+  // The seat is owned by a token, not by a socket id, so a dropped connection
+  // or a page refresh can reclaim it. Without this a reconnect left the client
+  // believing it was in a room that had no idea who it was.
+  const SESSION_KEY = 'md_session';
+  let resumeInProgress = false;
+  let quickWaitTimer = null;
+
+  function saveSession(code, token, mode) {
+    if (!code || !token) return;
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ code, token, mode: mode || 'room' }));
+      sessionStorage.setItem('md_room', code);
+      sessionStorage.setItem('md_token', token);
+    } catch (e) {}
+  }
+
+  function loadSession() {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.code && parsed.token) return parsed;
+      }
+      const code = sessionStorage.getItem('md_room');
+      const token = sessionStorage.getItem('md_token');
+      return code && token ? { code, token, mode: 'room' } : null;
+    } catch (e) { return null; }
+  }
+
+  function clearSession() {
+    try {
+      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem('md_room');
+      sessionStorage.removeItem('md_token');
+    } catch (e) {}
+  }
+
+  function setNetChip(text, bad) {
+    if (!netChip) return;
+    if (!text) { netChip.classList.remove('on', 'bad'); return; }
+    netChip.textContent = text;
+    netChip.classList.add('on');
+    netChip.classList.toggle('bad', !!bad);
+  }
+
+  function hideDuelScreens() {
+    gameHud.style.display = 'none';
+    endModal.classList.remove('show');
+    waitingModal.classList.remove('show');
+    quickModal.classList.remove('show');
+    matchIntro.classList.remove('on');
+    disconnectBanner.style.display = 'none';
+    blindnessOverlay.classList.remove('active');
+    [duelMenu, rulesScreen, settingsScreen].forEach(el => el.classList.remove('on'));
+  }
+
+  // Every failure that used to be a dead end gets a named screen instead of a
+  // silent waiting lobby.
+  function showSessionNotice(kind) {
+    isMatchActive = false;
+    isPracticeMode = false;
+    clearSession();
+    currentRoom = null;
+    clearQuickWait();
+    hideDuelScreens();
+    showTitle();
+
+    const copy = {
+      room_gone: ['ARENA CLOSED', 'That room is no longer available. The host may have left, or the arena server restarted.'],
+      resume_failed: ['COULD NOT REJOIN', 'The arena did not let you back in. Create a fresh room or search for a rival.'],
+      seat_timeout: ['DUEL COULD NOT START', 'Your rival never made it into the arena. Nothing was lost — try again.'],
+      rival_left: ['RIVAL LEFT', 'Your rival did not come back in time, so the arena closed.'],
+      disconnected: ['CONNECTION LOST', 'The arena stopped answering. Start a new duel once you are back online.']
+    }[kind] || ['CONNECTION', 'Something interrupted the arena.'];
+
+    netModalTitle.textContent = copy[0];
+    netModalDesc.textContent = copy[1];
+    netModal.classList.add('show');
+    updateNetState();
+  }
+
+  function resumeSession(sess) {
+    if (!sess || !sess.code || !sess.token || !socket.connected) return;
+    resumeInProgress = true;
+    const mode = sess.mode || 'room';
+    socket.emit('join_room', { code: sess.code, token: sess.token, name: currentName(), class: selectedClass }, (res) => {
+      if (res && res.ok) {
+        currentRoom = res.code;
+        isPracticeMode = mode === 'practice';
+        saveSession(res.code, res.token, mode);
+        hideTitle();
+        if (res.state === 'waiting') {
+          waitingCodeDisplay.textContent = res.code;
+          waitingStatusText.textContent = 'Waiting for a challenger to answer…';
+          waitingModal.classList.add('show');
+        }
+        return;
+      }
+      resumeInProgress = false;
+      if (mode === 'practice') {
+        // Nothing was at stake in solo practice, and a refresh should not be
+        // reported as "arena closed". Return quietly to the title.
+        clearSession();
+        currentRoom = null;
+        isMatchActive = false;
+        hideDuelScreens();
+        showTitle();
+        setNetChip('PRACTICE ENDED — START A NEW ONE FROM PLAY');
+        setTimeout(() => { if (socket.connected) setNetChip(null); }, 4500);
+        return;
+      }
+      showSessionNotice(/not found/i.test((res && res.error) || '') ? 'room_gone' : 'resume_failed');
+    });
+  }
+
+  function clearQuickWait() {
+    if (quickWaitTimer) clearTimeout(quickWaitTimer);
+    quickWaitTimer = null;
+    if (btnPracticeFromQueue) btnPracticeFromQueue.style.display = 'none';
+    if (quickHintText) quickHintText.textContent = 'Pairs you with the next player who searches.';
+  }
+
+  // An empty queue used to look identical to a broken one. After 15s the player
+  // is offered the thing that always works: the training dummy.
+  function startQuickWaitOffer() {
+    clearQuickWait();
+    quickWaitTimer = setTimeout(() => {
+      if (!quickModal.classList.contains('show')) return;
+      quickStatusText.textContent = 'Still no rival in the lists.';
+      quickHintText.textContent = 'The training dummy is always free — practice while you wait.';
+      btnPracticeFromQueue.style.display = 'inline-block';
+    }, 15000);
   }
 
   // ─── Match entry ───
@@ -4560,8 +4743,10 @@
     quickStatusText.textContent = 'Looking for another mage…';
     hideTitle();
     quickModal.classList.add('show');
+    startQuickWaitOffer();
     socket.emit('quick_duel', { name, class: selectedClass }, res => {
       if (!res || !res.ok) {
+        clearQuickWait();
         quickModal.classList.remove('show');
         showTitle();
         openPanel('play');
@@ -4581,6 +4766,7 @@
       if (res && res.ok) {
         currentRoom = res.code;
         isPracticeMode = true;
+        saveSession(res.code, res.token, 'practice');
         hideTitle();
         waitingModal.classList.remove('show');
         quickModal.classList.remove('show');
@@ -4600,8 +4786,8 @@
         currentRoom = res.code;
         isHost = true;
         waitingCodeDisplay.textContent = res.code;
-        sessionStorage.setItem('md_token', res.token);
-        sessionStorage.setItem('md_room', res.code);
+        saveSession(res.code, res.token, 'room');
+        waitingStatusText.textContent = 'Waiting for a challenger to answer…';
         hideTitle();
         waitingModal.classList.add('show');
       } else {
@@ -4622,33 +4808,59 @@
       panelNotice('Not connected to the arena. Start the server and refresh.', true);
       return;
     }
-    const savedToken = sessionStorage.getItem('md_room') === code ? sessionStorage.getItem('md_token') : null;
+    const saved = loadSession();
+    const savedToken = saved && saved.code === code ? saved.token : null;
     socket.emit('join_room', { code, name: currentName(), class: selectedClass, token: savedToken }, res => {
       if (!res || !res.ok) {
-        panelNotice(res && res.error ? res.error : 'Could not join that room.', true);
+        // "Room not found" is the most common dead end; give it real advice and
+        // a way forward rather than a red line of text.
+        if (res && /not found/i.test(res.error || '')) {
+          showSessionNotice('room_gone');
+        } else {
+          panelNotice(res && res.error ? res.error : 'Could not join that room.', true);
+        }
         return;
       }
       currentRoom = res.code;
       isHost = false;
-      sessionStorage.setItem('md_token', res.token);
-      sessionStorage.setItem('md_room', res.code);
+      saveSession(res.code, res.token, 'room');
       waitingCodeDisplay.textContent = res.code;
       hideTitle();
-      if (!res.reconnected) waitingModal.classList.add('show');
+      if (!res.reconnected) {
+        waitingStatusText.textContent = 'Waiting for the duel to begin…';
+        waitingModal.classList.add('show');
+      }
     });
   }
 
   function leaveQuickQueue() {
+    clearQuickWait();
     socket.emit('cancel_quick_duel');
     quickModal.classList.remove('show');
     showTitle();
   }
 
   btnCancelQuick.addEventListener('click', leaveQuickQueue);
+  btnPracticeFromQueue.addEventListener('click', () => {
+    clearQuickWait();
+    socket.emit('cancel_quick_duel');
+    quickModal.classList.remove('show');
+    startPractice();
+  });
   btnCancelWaiting.addEventListener('click', () => {
     socket.emit('leave_room');
+    clearSession();
     waitingModal.classList.remove('show');
     showTitle();
+  });
+  btnNetMenu.addEventListener('click', () => {
+    netModal.classList.remove('show');
+    showTitle();
+  });
+  btnNetCreate.addEventListener('click', () => {
+    netModal.classList.remove('show');
+    showTitle();
+    openPanel('play');
   });
 
   btnCopyInvite.addEventListener('click', () => {
@@ -4710,6 +4922,9 @@
   function leaveMatch() {
     isMatchActive = false;
     isPracticeMode = false;
+    clearSession();
+    clearQuickWait();
+    disconnectBanner.style.display = 'none';
     SFX.stopCharge();
     socket.emit('leave_room');
     gameHud.style.display = 'none';
@@ -4853,9 +5068,88 @@
   socket.on('connect', () => {
     myId = socket.id;
     startClockSync();
+    setNetChip(null);
+    // Reclaim the seat on every (re)connect, including a page refresh: the
+    // server answers with room_update, and match_start + a snapshot if a duel
+    // is already running, so the whole screen rebuilds itself.
+    const sess = loadSession();
+    if (sess) resumeSession(sess);
+  });
+
+  socket.on('disconnect', (reason) => {
+    updateNetState();
+    const inSession = isMatchActive || waitingModal.classList.contains('show') || quickModal.classList.contains('show');
+    if (!inSession) return;
+    setNetChip(reason === 'io server disconnect' ? 'DISCONNECTED FROM THE ARENA' : 'RECONNECTING…', true);
+  });
+
+  if (socket.io && socket.io.on) {
+    socket.io.on('reconnect_attempt', (attempt) => {
+      if (isMatchActive || waitingModal.classList.contains('show') || quickModal.classList.contains('show')) {
+        setNetChip(`RECONNECTING… ATTEMPT ${attempt}`, true);
+      }
+    });
+    socket.io.on('reconnect_failed', () => {
+      setNetChip('CONNECTION LOST', true);
+      if (loadSession()) showSessionNotice('disconnected');
+    });
+  }
+
+  // Paired with a rival by Quick Duel: the server hands each side a room code
+  // and a seat token. The client never handled this before, so a pairing could
+  // not turn into a match at all.
+  socket.on('quick_match_found', (data) => {
+    if (!data || !data.code || !data.token) return;
+    clearQuickWait();
+    quickStatusText.textContent = 'Rival found. Entering the arena…';
+    socket.emit('join_room', { code: data.code, token: data.token, name: currentName(), class: selectedClass }, (res) => {
+      if (!res || !res.ok) {
+        showSessionNotice('resume_failed');
+        return;
+      }
+      currentRoom = res.code;
+      isHost = false;
+      saveSession(res.code, res.token, 'quick');
+      waitingCodeDisplay.textContent = res.code;
+      quickModal.classList.remove('show');
+      hideTitle();
+    });
+  });
+
+  // Lobby state from the server: who is seated, and whether they are reachable.
+  socket.on('room_update', (data) => {
+    if (!data || !data.code || data.code !== currentRoom) return;
+    if (!waitingModal.classList.contains('show')) return;
+    const rival = (data.players || []).find(p => !p.isBot && p.id !== myId);
+    if (!rival) {
+      waitingStatusText.textContent = 'Waiting for a challenger to answer…';
+    } else if (rival.isOnline === false) {
+      waitingStatusText.textContent = 'Your rival dropped — holding their seat for a moment…';
+    } else {
+      waitingStatusText.textContent = `${rival.name} is here. Starting the duel…`;
+    }
+  });
+
+  // The server could not seat a duel (a paired rival vanished, or a waiting
+  // room's grace period ran out). Show it instead of leaving the screen stuck.
+  socket.on('match_failed', (ev) => {
+    const reason = ev && ev.reason;
+    showSessionNotice(reason === 'rival_left' ? 'rival_left' : 'seat_timeout');
+  });
+
+  socket.on('quick_match_failed', () => {
+    clearQuickWait();
+    quickStatusText.textContent = 'Your rival vanished before the duel. Searching again…';
+    startQuickWaitOffer();
+    quickModal.classList.add('show');
   });
 
   socket.on('match_start', (data) => {
+    const resumed = resumeInProgress;
+    resumeInProgress = false;
+    clearQuickWait();
+    setNetChip(null);
+    netModal.classList.remove('show');
     isMatchActive = true;
     blindnessOverlay.classList.remove('active');
     blindnessOverlay.style.opacity = 0;
@@ -4885,30 +5179,35 @@
 
     isPracticeMode = !!(opp.name === 'Training Dummy' || (currentRoom && currentRoom.startsWith('PRACTICE_')));
 
-    // Start positions & initial aim: Host on left (-6, facing +X), Guest on right (+6, facing -X)
-    myPos.x = isHost ? -6 : 6;
-    myPos.z = 0;
-    oppPos.x = isHost ? 6 : -6;
-    oppPos.z = 0;
-    myYaw = isHost ? 0 : Math.PI;
-    oppYaw = isHost ? Math.PI : 0;
-    lastSentPos.x = myPos.x;
-    lastSentPos.z = myPos.z;
-    lastSentYaw = myYaw;
+    // A resumed duel keeps the player where they left off; a fresh match starts
+    // at spawn. Snapping a reconnecting mage back to the entrance would undo
+    // the repositioning they did before the drop.
+    if (!resumed) {
+      // Start positions & initial aim: Host on left (-6, facing +X), Guest on right (+6, facing -X)
+      myPos.x = isHost ? -6 : 6;
+      myPos.z = 0;
+      oppPos.x = isHost ? 6 : -6;
+      oppPos.z = 0;
+      myYaw = isHost ? 0 : Math.PI;
+      oppYaw = isHost ? Math.PI : 0;
+      lastSentPos.x = myPos.x;
+      lastSentPos.z = myPos.z;
+      lastSentYaw = myYaw;
 
-    // Position camera immediately behind player on duel start
-    const fwdX = Math.cos(myYaw), fwdZ = -Math.sin(myYaw);
-    const cosP = Math.cos(camPitch), sinP = Math.sin(camPitch);
-    const idealDist = 8.2;
-    const shX = -fwdZ * 0.85, shZ = fwdX * 0.85;
-    camPos.x = myPos.x - fwdX * idealDist * cosP + shX;
-    camPos.z = myPos.z - fwdZ * idealDist * cosP + shZ;
-    camPos.y = 1.8 + idealDist * sinP;
-    camLook.x = myPos.x + fwdX * 12.0 + shX;
-    camLook.y = 1.8 - sinP * 2.5;
-    camLook.z = myPos.z + fwdZ * 12.0 + shZ;
-    camera.position.set(camPos.x, camPos.y, camPos.z);
-    camera.lookAt(camLook.x, camLook.y, camLook.z);
+      // Position camera immediately behind player on duel start
+      const fwdX = Math.cos(myYaw), fwdZ = -Math.sin(myYaw);
+      const cosP = Math.cos(camPitch), sinP = Math.sin(camPitch);
+      const idealDist = 8.2;
+      const shX = -fwdZ * 0.85, shZ = fwdX * 0.85;
+      camPos.x = myPos.x - fwdX * idealDist * cosP + shX;
+      camPos.z = myPos.z - fwdZ * idealDist * cosP + shZ;
+      camPos.y = 1.8 + idealDist * sinP;
+      camLook.x = myPos.x + fwdX * 12.0 + shX;
+      camLook.y = 1.8 - sinP * 2.5;
+      camLook.z = myPos.z + fwdZ * 12.0 + shZ;
+      camera.position.set(camPos.x, camPos.y, camPos.z);
+      camera.lookAt(camLook.x, camLook.y, camLook.z);
+    }
 
     document.getElementById('youHudName').textContent = currentName();
     document.getElementById('oppHudName').textContent = opp.name || 'Rival';
@@ -5180,6 +5479,9 @@
 
   socket.on('match_end', (ev) => {
     isMatchActive = false;
+    // The room is over; a later reconnect must not try to resume it.
+    clearSession();
+    disconnectBanner.style.display = 'none';
     SFX.stopCharge();
     closeDuelMenu();
     matchIntro.classList.remove('on');
