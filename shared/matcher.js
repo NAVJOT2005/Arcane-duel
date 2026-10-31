@@ -2,7 +2,7 @@
 // Dependency-free text matching for voice & typed incantations.
 // Works in both Node.js and Browser environments.
 
-const { SPELLS } = require ? require('./spells') : window;
+const SPELLS = (typeof require !== 'undefined') ? require('./spells').SPELLS : (typeof window !== 'undefined' ? window.SPELLS : {});
 
 function cleanText(text) {
   if (!text) return '';

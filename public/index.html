@@ -263,12 +263,32 @@
       min-width: clamp(50px, 7.5vw, 82px);
       position: relative;
       overflow: hidden;
-      transition: transform 0.08s, border-color 0.15s;
+      transition: transform 0.08s, border-color 0.15s, box-shadow 0.15s;
     }
-    .spell-card-btn:active:not(:disabled) { transform: scale(0.95); }
+    .spell-card-btn:active:not(:disabled), .spell-card-btn.key-pressed {
+      transform: scale(0.92) !important;
+      border-color: #fde047 !important;
+      box-shadow: 0 0 12px rgba(253, 224, 71, 0.6) !important;
+    }
     .spell-card-btn:hover:not(:disabled) { border-color: #f97316; }
     .spell-card-btn:disabled { opacity: 0.35; cursor: not-allowed; }
     .spell-card-btn.ult { border-color: #eab308; background: rgba(39, 33, 14, 0.9); }
+    .spell-key-badge {
+      display: inline-block;
+      background: #7a6cf0;
+      color: #ffffff;
+      font-weight: 900;
+      font-size: 0.72em;
+      padding: 1px 4px;
+      border-radius: 3px;
+      margin-right: 4px;
+      vertical-align: middle;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .spell-card-btn.ult .spell-key-badge {
+      background: #eab308;
+      color: #000;
+    }
     .spell-title { font-size: 1.05em; font-weight: bold; line-height: 1; }
     .spell-meta { font-size: 0.75em; color: #94a3b8; margin-top: 2px; }
     .spell-cost-tag { color: #818cf8; font-weight: bold; }
@@ -509,7 +529,7 @@
         <button id="btnVoiceToggle" class="hud-btn">
           <span id="micIcon">🎤</span> <span id="micStatusText">VOICE OFF</span>
         </button>
-        <div class="heard-chip" id="heardDisplay" style="flex: 1;">WASD move • Right-Click or Drag to aim • Voice or Tap spells</div>
+        <div class="heard-chip" id="heardDisplay" style="flex: 1;">Keys 1-4 & Space to cast • Right-Click aim • Voice or Tap</div>
       </div>
 
       <!-- 5 Equal Spell Action Buttons -->
@@ -563,23 +583,23 @@
   <div id="rulesModal" class="modal-backdrop">
     <div class="modal-box" style="text-align: left;">
       <h2 style="text-align: center;">⚡ HOW TO PLAY (30s)</h2>
-      <p style="text-align: center; color: #93c5fd;">Reduce rival's 100 HP to 0 by shouting incantations or tapping spells!</p>
+      <p style="text-align: center; color: #93c5fd;">Reduce rival's 100 HP to 0 by casting spells with Hotkeys or Voice!</p>
       
       <div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
-        <div style="color: #f97316; font-weight: bold;">1. THIRD-PERSON MOVEMENT & AIMING:</div>
+        <div style="color: #f97316; font-weight: bold;">1. MOVEMENT & AIMING:</div>
         <div style="font-size: 0.9em;">• <strong>WASD</strong>: Move in any direction relative to your facing angle!</div>
-        <div style="font-size: 0.9em;">• <strong>Hold Right-Click (or drag arena)</strong>: Smoothly rotate your character & camera aim!</div>
+        <div style="font-size: 0.9em;">• <strong>Hold Right-Click (or drag arena)</strong>: Aim freely with your mouse while casting!</div>
         <div style="font-size: 0.9em;">• <strong>Q / E or Arrow Keys</strong>: Keyboard turning fallback!</div>
-        <div style="font-size: 0.9em;">• <strong>Click Spells / Voice</strong>: Moving your mouse freely to click UI never moves your character!</div>
       </div>
 
       <div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
-        <div style="color: #f97316; font-weight: bold;">2. EQUAL CLASS KITS (5 SPELLS EACH):</div>
-        <div style="font-size: 0.9em;">• <strong>Block ("Nope!")</strong>: 0 mana, 1.5s shield. Cast in 0.6s before hit to <strong>STUN</strong>!</div>
-        <div style="font-size: 0.9em;">• <strong>Heal ("Patch me up!")</strong>: +20 HP, 4 mana, 10s cooldown. Cancelled if hit!</div>
-        <div style="font-size: 0.9em;">• <strong>Quick Spell (1M)</strong>: Fast instant jab. Land 3 to trigger Elemental Passive!</div>
-        <div style="font-size: 0.9em;">• <strong>Signature Spell (3M)</strong>: 1.5s wind-up heavy nuke.</div>
-        <div style="font-size: 0.9em;">• <strong>Ultimate Finisher (10M)</strong>: 3s wind-up, 50 damage finisher!</div>
+        <div style="color: #f97316; font-weight: bold;">2. SPELL HOTKEYS & VOICE CHANTS:</div>
+        <div style="font-size: 0.9em;">• <strong>[1] Quick Spell (1M)</strong>: Fast instant jab (e.g. Spark / Zap / Dart). Land 3 for passive!</div>
+        <div style="font-size: 0.9em;">• <strong>[2] Signature Spell (3M)</strong>: 1.5s heavy nuke (e.g. Fireball / Blizzard / Smash).</div>
+        <div style="font-size: 0.9em;">• <strong>[3] Ultimate Finisher (10M)</strong>: 3s wind-up, 50 damage finisher!</div>
+        <div style="font-size: 0.9em;">• <strong>[4] Heal (+20 HP)</strong>: 4 mana, 10s cooldown. Cancelled if hit!</div>
+        <div style="font-size: 0.9em;">• <strong>[SPACE] or [5] Block ("Nope!")</strong>: 0 mana, 1.5s shield. Time it in 0.6s before hit to <strong>STUN</strong>!</div>
+        <div style="font-size: 0.9em;">• <strong>🎤 Voice Incantations</strong>: Toggle VOICE ON and speak chants (e.g. "Burn!", "Nope!", "Patch me up!").</div>
       </div>
 
       <button id="btnCloseRules" class="retro-btn" style="width: 100%; margin-top: 8px;">GOT IT, LET'S DUEL!</button>
@@ -1423,10 +1443,39 @@
   const oppWindupFill = document.getElementById('oppWindupFill');
   const oppWindupLabel = document.getElementById('oppWindupLabel');
 
-  // Keyboard Movement Event Listeners
+  // ─── SPELL KEYBIND SYSTEM (Concurrent Aim & Cast) ───
+  let hotkeySpellMap = {};
+
+  function triggerSpellByKey(key) {
+    if (gameHud.style.display === 'none') return;
+    const spellId = hotkeySpellMap[key];
+    if (spellId) {
+      const card = document.getElementById(`btn_spell_${spellId}`);
+      if (card) {
+        card.classList.add('key-pressed');
+        setTimeout(() => card.classList.remove('key-pressed'), 140);
+      }
+      socket.emit('cast', { spell: spellId, source: 'keybind' });
+    }
+  }
+
+  // Keyboard Movement & Spell Keybinds
   window.addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     keys[k] = true;
+
+    // Prevent spacebar from scrolling browser window
+    if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault();
+    }
+
+    // Cast spells via keybinds [1, 2, 3, 4, 5, Space] when match is active
+    if (gameHud.style.display !== 'none' && !e.target.closest('input, textarea')) {
+      const spellKey = (e.key === ' ' || e.code === 'Space') ? 'space' : e.key;
+      if (hotkeySpellMap[spellKey]) {
+        triggerSpellByKey(spellKey);
+      }
+    }
   });
   window.addEventListener('keyup', e => {
     const k = e.key.toLowerCase();
@@ -1564,13 +1613,33 @@
   function buildSpellButtons(mageClass) {
     spellButtonsContainer.innerHTML = '';
     const classCfg = window.CLASSES[mageClass] || window.CLASSES.fire;
-    classCfg.spells.forEach(sid => {
+
+    const quickSpell = classCfg.spells.find(s => window.SPELLS[s].cost === 1);
+    const sigSpell = classCfg.spells.find(s => window.SPELLS[s].cost === 3);
+    const ultSpell = classCfg.spells.find(s => window.SPELLS[s].cost === 10);
+
+    const spellOrder = [
+      { sid: quickSpell, key: '1', badge: '1' },
+      { sid: sigSpell, key: '2', badge: '2' },
+      { sid: ultSpell, key: '3', badge: '3' },
+      { sid: 'heal', key: '4', badge: '4' },
+      { sid: 'block', key: 'space', altKey: '5', badge: 'SPACE' }
+    ];
+
+    hotkeySpellMap = {};
+
+    spellOrder.forEach(item => {
+      const sid = item.sid;
+      if (!sid || !window.SPELLS[sid]) return;
+      hotkeySpellMap[item.key] = sid;
+      if (item.altKey) hotkeySpellMap[item.altKey] = sid;
+
       const spell = window.SPELLS[sid];
       const btn = document.createElement('button');
       btn.className = `spell-card-btn ${spell.cost === 10 ? 'ult' : ''}`;
       btn.id = `btn_spell_${sid}`;
       btn.innerHTML = `
-        <span class="spell-title">${spell.name}</span>
+        <span class="spell-title"><span class="spell-key-badge">${item.badge}</span>${spell.name}</span>
         <span class="spell-meta"><span class="spell-cost-tag">${spell.cost > 0 ? spell.cost + 'M' : 'FREE'}</span> • ${spell.damage ? spell.damage + 'dmg' : spell.heal ? '+20' : '1.5s'}</span>
         <div class="cd-overlay" id="cd_${sid}"></div>
       `;
@@ -1800,35 +1869,75 @@
     });
   }
 
-  // ─── 6. VOICE RECOGNITION CONTROLLER ───
+  // ─── 6. ROBUST VOICE RECOGNITION CONTROLLER ───
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let voiceOn = false, rec = null;
+  let voiceOn = false, rec = null, micPermissionRequested = false;
+  let lastCastVoiceTime = 0;
 
   if (!SR) {
     btnVoiceToggle.style.display = 'none';
-    heardDisplay.textContent = 'Voice unavailable in browser. Tap or type spells!';
+    heardDisplay.textContent = 'Voice recognition requires Chrome/Edge. Use keys 1-4 & Space to cast!';
   }
 
   function createRecognition() {
     if (!SR) return null;
     const r = new SR();
-    r.continuous = false;
+    r.continuous = true;
     r.interimResults = true;
+    r.maxAlternatives = 3;
     r.lang = 'en-US';
 
-    r.onresult = (e) => {
-      let t = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
-      const raw = t.trim();
-      if (!raw) return;
+    r.onstart = () => {
+      voiceOn = true;
+      btnVoiceToggle.classList.add('active');
+      micStatusText.textContent = 'LISTENING...';
+      heardDisplay.innerHTML = '🎤 Mic active! Say "Burn!", "Nope!", "Freeze!", etc.';
+    };
 
-      const classCfg = window.CLASSES[myMageClass] || window.CLASSES.fire;
-      const matched = window.matchSpell(raw, classCfg.spells);
-      if (matched) {
-        heardDisplay.innerHTML = `Heard: "<strong>${raw}</strong>" &rarr; Casting ${window.SPELLS[matched].name}!`;
-        socket.emit('cast', { spell: matched, chant: raw, source: 'voice' });
-      } else {
-        heardDisplay.innerHTML = `Listening: "<em>${raw}</em>"...`;
+    r.onerror = (e) => {
+      console.warn('SpeechRecognition error:', e.error);
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        voiceOn = false;
+        btnVoiceToggle.classList.remove('active');
+        micStatusText.textContent = 'MIC BLOCKED';
+        heardDisplay.innerHTML = '⚠️ <strong>Mic blocked!</strong> Click lock icon in browser URL bar to allow microphone.';
+      } else if (e.error === 'audio-capture') {
+        voiceOn = false;
+        btnVoiceToggle.classList.remove('active');
+        micStatusText.textContent = 'NO MIC';
+        heardDisplay.textContent = '⚠️ No microphone detected on this device.';
+      } else if (e.error !== 'no-speech') {
+        heardDisplay.textContent = `Speech error (${e.error}). Tap button to restart.`;
+      }
+    };
+
+    r.onresult = (e) => {
+      const now = Date.now();
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i];
+        for (let alt = 0; alt < res.length; alt++) {
+          const raw = res[alt].transcript.trim();
+          if (!raw) continue;
+
+          const classCfg = window.CLASSES[myMageClass] || window.CLASSES.fire;
+          const matched = window.matchSpell(raw, classCfg.spells);
+          if (matched) {
+            if (now - lastCastVoiceTime > 350) {
+              lastCastVoiceTime = now;
+              // Visual card press animation
+              const card = document.getElementById(`btn_spell_${matched}`);
+              if (card) {
+                card.classList.add('key-pressed');
+                setTimeout(() => card.classList.remove('key-pressed'), 200);
+              }
+              heardDisplay.innerHTML = `🎤 Heard: "<strong>${raw}</strong>" &rarr; ${window.SPELLS[matched].name}!`;
+              socket.emit('cast', { spell: matched, chant: raw, source: 'voice' });
+            }
+            return;
+          } else {
+            heardDisplay.innerHTML = `🎤 Listening: "<em>${raw}</em>"...`;
+          }
+        }
       }
     };
 
@@ -1836,27 +1945,51 @@
       if (voiceOn) {
         setTimeout(() => {
           if (voiceOn) {
-            try { rec = createRecognition(); rec.start(); } catch (err) {}
+            try { r.start(); } catch (err) {
+              try { rec = createRecognition(); if (rec) rec.start(); } catch (e) {}
+            }
           }
-        }, 200);
+        }, 150);
       }
     };
+
     return r;
   }
 
-  btnVoiceToggle.addEventListener('click', () => {
+  btnVoiceToggle.addEventListener('click', async () => {
     if (!voiceOn) {
-      rec = createRecognition();
+      heardDisplay.textContent = 'Requesting microphone access...';
+      // Prompt for microphone permission via getUserMedia if not yet prompted
       try {
-        rec.start();
-        voiceOn = true;
-        btnVoiceToggle.classList.add('active');
-        micStatusText.textContent = 'VOICE ON';
-        heardDisplay.textContent = 'Microphone live! Shout your incantations!';
-      } catch (e) {}
+        if (!micPermissionRequested && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(t => t.stop());
+          micPermissionRequested = true;
+        }
+      } catch (err) {
+        console.warn('getUserMedia error:', err);
+        micStatusText.textContent = 'MIC BLOCKED';
+        heardDisplay.innerHTML = '⚠️ <strong>Microphone blocked!</strong> Click the lock icon in your URL bar to allow microphone access.';
+        return;
+      }
+
+      rec = createRecognition();
+      if (rec) {
+        try {
+          rec.start();
+          voiceOn = true;
+          btnVoiceToggle.classList.add('active');
+          micStatusText.textContent = 'LISTENING...';
+          heardDisplay.textContent = '🎤 Microphone live! Shout your incantations!';
+        } catch (e) {
+          console.warn('SpeechRecognition start error:', e);
+        }
+      }
     } else {
       voiceOn = false;
-      if (rec) rec.stop();
+      if (rec) {
+        try { rec.abort(); } catch (e) {}
+      }
       btnVoiceToggle.classList.remove('active');
       micStatusText.textContent = 'VOICE OFF';
       heardDisplay.textContent = 'Voice paused. Tap button to activate.';
