@@ -43,6 +43,9 @@ function getSpellAliasEntries(spellsDict) {
   const dict = spellsDict || (typeof SPELLS !== 'undefined' ? SPELLS : {});
   const entries = [];
   for (const [spellId, spell] of Object.entries(dict)) {
+    if (spell.name) {
+      entries.push({ spellId, alias: cleanText(spell.name) });
+    }
     if (spell.incantation) {
       entries.push({ spellId, alias: cleanText(spell.incantation) });
     }
@@ -52,9 +55,18 @@ function getSpellAliasEntries(spellsDict) {
       }
     }
   }
-  // Sort longest aliases first
-  entries.sort((a, b) => b.alias.length - a.alias.length);
-  return entries;
+  // Remove duplicates and sort longest aliases first
+  const seen = new Set();
+  const unique = [];
+  for (const e of entries) {
+    const key = e.spellId + ':' + e.alias;
+    if (!seen.has(key) && e.alias) {
+      seen.add(key);
+      unique.push(e);
+    }
+  }
+  unique.sort((a, b) => b.alias.length - a.alias.length);
+  return unique;
 }
 
 function matchSpell(text, availableSpells) {

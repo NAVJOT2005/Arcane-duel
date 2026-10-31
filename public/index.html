@@ -292,6 +292,18 @@
     .spell-title { font-size: 1.05em; font-weight: bold; line-height: 1; }
     .spell-meta { font-size: 0.75em; color: #94a3b8; margin-top: 2px; }
     .spell-cost-tag { color: #818cf8; font-weight: bold; }
+    .spell-chant-hint {
+      font-size: 0.65em;
+      color: #fde047;
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      letter-spacing: 0.2px;
+      font-style: italic;
+      opacity: 0.95;
+    }
     .cd-overlay {
       position: absolute;
       inset: 0;
@@ -302,6 +314,90 @@
       align-items: center;
       font-size: 1.1em;
       font-weight: bold;
+    }
+
+    /* Lobby Spellbook Showcase & Grimoire */
+    .class-spellbook-wrap {
+      background: rgba(12, 10, 28, 0.9);
+      border: 1px solid #4a3e9c;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+    .class-spellbook-hdr {
+      font-size: 0.85em;
+      color: #fb923c;
+      font-weight: bold;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid #2d265e;
+      padding-bottom: 4px;
+    }
+    .class-spell-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .class-spell-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(22, 18, 48, 0.65);
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 0.82em;
+      border-left: 3px solid #7a6cf0;
+    }
+    .class-spell-line.ult {
+      border-left-color: #eab308;
+      background: rgba(45, 34, 12, 0.45);
+    }
+    .class-spell-name-col {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #f8fafc;
+      font-weight: bold;
+      min-width: 135px;
+    }
+    .class-spell-stats-col {
+      color: #94a3b8;
+      font-size: 0.88em;
+      min-width: 85px;
+    }
+    .class-spell-voice-col {
+      color: #fde047;
+      font-size: 0.86em;
+      font-style: italic;
+      text-align: right;
+      flex: 1;
+    }
+    .class-passive-box {
+      margin-top: 6px;
+      padding: 4px 6px;
+      background: rgba(30, 27, 65, 0.7);
+      border-radius: 4px;
+      font-size: 0.82em;
+      color: #93c5fd;
+      line-height: 1.3;
+    }
+    .grimoire-card {
+      background: rgba(15, 12, 35, 0.8);
+      border: 1px solid #3b356d;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+    }
+    .grimoire-card-title {
+      font-weight: bold;
+      font-size: 1.0em;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
 
     /* ─── FLOATING DAMAGE / BUFF NUMBERS ─── */
@@ -553,7 +649,18 @@
         <button class="class-pick-btn" data-class="earth">🌍 EARTH</button>
         <button class="class-pick-btn" data-class="dark">🌑 DARK</button>
       </div>
-      <div id="classDesc">High burst damage. 3 Sparks ignite enemies for burn damage over time.</div>
+      <div id="classSpellbookWrap" class="class-spellbook-wrap">
+        <div class="class-spellbook-hdr">
+          <span id="classKitTitle">FIRE MAGE SPELLBOOK</span>
+          <span style="color: #94a3b8; font-size: 0.82em;">KEYS & CHANTS</span>
+        </div>
+        <div class="class-spell-grid" id="classSpellList">
+          <!-- Dynamically populated -->
+        </div>
+        <div class="class-passive-box" id="classPassiveBox">
+          <!-- Passive description -->
+        </div>
+      </div>
 
       <input type="text" id="playerNameInput" class="retro-input" placeholder="Your Mage Name" maxlength="14" value="Pyromancer" />
 
@@ -579,10 +686,10 @@
     </div>
   </div>
 
-  <!-- ─── MODAL 3: HOW TO PLAY (Under 30s) ─── -->
+  <!-- ─── MODAL 3: HOW TO PLAY & SPELL GRIMOIRE ─── -->
   <div id="rulesModal" class="modal-backdrop">
-    <div class="modal-box" style="text-align: left;">
-      <h2 style="text-align: center;">⚡ HOW TO PLAY (30s)</h2>
+    <div class="modal-box" style="text-align: left; max-width: 650px;">
+      <h2 style="text-align: center;">⚡ HOW TO PLAY & GRIMOIRE</h2>
       <p style="text-align: center; color: #93c5fd;">Reduce rival's 100 HP to 0 by casting spells with Hotkeys or Voice!</p>
       
       <div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
@@ -590,16 +697,69 @@
         <div style="font-size: 0.9em;">• <strong>WASD</strong>: Move in any direction relative to your facing angle!</div>
         <div style="font-size: 0.9em;">• <strong>Hold Right-Click (or drag arena)</strong>: Aim freely with your mouse while casting!</div>
         <div style="font-size: 0.9em;">• <strong>Q / E or Arrow Keys</strong>: Keyboard turning fallback!</div>
+        <div style="font-size: 0.9em;">• <strong>Keys [1, 2, 3, 4, SPACE]</strong>: Cast spells instantly with left hand while aiming!</div>
       </div>
 
-      <div style="border-bottom: 1px solid #334155; padding-bottom: 6px; margin-bottom: 8px;">
-        <div style="color: #f97316; font-weight: bold;">2. SPELL HOTKEYS & VOICE CHANTS:</div>
-        <div style="font-size: 0.9em;">• <strong>[1] Quick Spell (1M)</strong>: Fast instant jab (e.g. Spark / Zap / Dart). Land 3 for passive!</div>
-        <div style="font-size: 0.9em;">• <strong>[2] Signature Spell (3M)</strong>: 1.5s heavy nuke (e.g. Fireball / Blizzard / Smash).</div>
-        <div style="font-size: 0.9em;">• <strong>[3] Ultimate Finisher (10M)</strong>: 3s wind-up, 50 damage finisher!</div>
-        <div style="font-size: 0.9em;">• <strong>[4] Heal (+20 HP)</strong>: 4 mana, 10s cooldown. Cancelled if hit!</div>
-        <div style="font-size: 0.9em;">• <strong>[SPACE] or [5] Block ("Nope!")</strong>: 0 mana, 1.5s shield. Time it in 0.6s before hit to <strong>STUN</strong>!</div>
-        <div style="font-size: 0.9em;">• <strong>🎤 Voice Incantations</strong>: Toggle VOICE ON and speak chants (e.g. "Burn!", "Nope!", "Patch me up!").</div>
+      <div style="margin-bottom: 8px;">
+        <div style="color: #f97316; font-weight: bold; margin-bottom: 4px;">2. ALL CLASSES, SPELLS & SPOKEN INCANTATIONS:</div>
+        
+        <div class="grimoire-card">
+          <div class="grimoire-card-title" style="color: #fb923c;">🔥 FIRE MAGE <span style="font-size:0.75em;color:#94a3b8;">High Burst & Burning DoT</span></div>
+          <div style="font-size:0.83em;color:#cbd5e1;line-height:1.45;">
+            • <strong>[1] Spark (1M)</strong>: 4 dmg instant. <em>Say: "Spit hot!" or "Spark"</em><br>
+            • <strong>[2] Fireball (3M)</strong>: 18 dmg nuke (1.5s windup). <em>Say: "Eat flames!" or "Fireball" or "Burn"</em><br>
+            • <strong>[3] Inferno Nova (10M)</strong>: 50 dmg finisher (3s windup). <em>Say: "Supernova boom!" or "Inferno Nova"</em><br>
+            • <em>Passive</em>: Land 3 Sparks to ignite rival with 3 ticks of burn damage!
+          </div>
+        </div>
+
+        <div class="grimoire-card">
+          <div class="grimoire-card-title" style="color: #38bdf8;">❄️ FROST MAGE <span style="font-size:0.75em;color:#94a3b8;">Control & Mana Slow</span></div>
+          <div style="font-size:0.83em;color:#cbd5e1;line-height:1.45;">
+            • <strong>[1] Ice Shard (1M)</strong>: 4 dmg instant. <em>Say: "Brain freeze!" or "Ice Shard"</em><br>
+            • <strong>[2] Blizzard Spear (3M)</strong>: 16 dmg nuke (1.5s windup). <em>Say: "Chill out!" or "Blizzard Spear" or "Freeze"</em><br>
+            • <strong>[3] Absolute Zero (10M)</strong>: 50 dmg finisher (3s windup). <em>Say: "Sub zero slam!" or "Absolute Zero"</em><br>
+            • <em>Passive</em>: Land 3 Shards to chill rival and cut their mana regen in half!
+          </div>
+        </div>
+
+        <div class="grimoire-card">
+          <div class="grimoire-card-title" style="color: #facc15;">⚡ LIGHTNING MAGE <span style="font-size:0.75em;color:#94a3b8;">Piercing & Mana Drain</span></div>
+          <div style="font-size:0.83em;color:#cbd5e1;line-height:1.45;">
+            • <strong>[1] Zap (1M)</strong>: 4 dmg instant. <em>Say: "Buzz off!" or "Zap" or "Lightning"</em><br>
+            • <strong>[2] Thunder Strike (3M)</strong>: 14 dmg fast nuke (1s windup, <strong>ignores Block!</strong>). <em>Say: "Shock therapy!" or "Thunder Strike"</em><br>
+            • <strong>[3] Judgment Bolt (10M)</strong>: 50 dmg finisher (3s windup). <em>Say: "Smite them!" or "Judgment Bolt"</em><br>
+            • <em>Passive</em>: Land 3 Zaps to instantly drain 1 mana from the rival!
+          </div>
+        </div>
+
+        <div class="grimoire-card">
+          <div class="grimoire-card-title" style="color: #4ade80;">🌍 EARTH MAGE <span style="font-size:0.75em;color:#94a3b8;">Fortress & Tremors</span></div>
+          <div style="font-size:0.83em;color:#cbd5e1;line-height:1.45;">
+            • <strong>[1] Pebble Shot (1M)</strong>: 4 dmg instant. <em>Say: "Rock on!" or "Pebble Shot" or "Rock"</em><br>
+            • <strong>[2] Boulder Smash (3M)</strong>: 18 dmg nuke (1.5s windup, grants +5 stone shield). <em>Say: "Eat dirt!" or "Boulder Smash"</em><br>
+            • <strong>[3] Cataclysm (10M)</strong>: 50 dmg finisher (3s windup). <em>Say: "Terra quake!" or "Cataclysm" or "Earthquake"</em><br>
+            • <em>Passive</em>: Land 3 Pebbles to cause tremors (+0.8s to rival's next cooldown)!
+          </div>
+        </div>
+
+        <div class="grimoire-card">
+          <div class="grimoire-card-title" style="color: #c084fc;">🌑 DARK MAGE <span style="font-size:0.75em;color:#94a3b8;">Lifesteal & Blindness</span></div>
+          <div style="font-size:0.83em;color:#cbd5e1;line-height:1.45;">
+            • <strong>[1] Shadow Dart (1M)</strong>: 4 dmg instant. <em>Say: "Begone!" or "Shadow Dart" or "Dart"</em><br>
+            • <strong>[2] Soul Drain (3M)</strong>: 14 dmg nuke (1.5s windup, <strong>heals you for +6 HP!</strong>). <em>Say: "Darkness rise!" or "Soul Drain"</em><br>
+            • <strong>[3] Abyssal Void (10M)</strong>: 50 dmg finisher (3s windup). <em>Say: "Black hole plunge!" or "Abyssal Void"</em><br>
+            • <em>Passive</em>: Land 3 Darts to inflict Eclipse Blindness covering rival's view!
+          </div>
+        </div>
+
+        <div class="grimoire-card" style="border-color:#38bdf8;">
+          <div class="grimoire-card-title" style="color: #38bdf8;">🛡️ UNIVERSAL DEFENSES (All Mages)</div>
+          <div style="font-size:0.83em;color:#cbd5e1;line-height:1.45;">
+            • <strong>[SPACE] or [5] Block (0M)</strong>: 1.5s shield (4s cooldown). Time within 0.6s of attack to <strong>STUN</strong>! <em>Say: "Nope!" or "Block" or "Shield"</em><br>
+            • <strong>[4] Heal (4M)</strong>: 2s windup restores +20 HP (10s cooldown). Cancelled if hit! <em>Say: "Patch me up!" or "Heal"</em>
+          </div>
+        </div>
       </div>
 
       <button id="btnCloseRules" class="retro-btn" style="width: 100%; margin-top: 8px;">GOT IT, LET'S DUEL!</button>
@@ -1416,7 +1576,9 @@
   const rulesModal = document.getElementById('rulesModal');
   const endModal = document.getElementById('endModal');
   const classSelectorGrid = document.getElementById('classSelectorGrid');
-  const classDesc = document.getElementById('classDesc');
+  const classSpellList = document.getElementById('classSpellList');
+  const classKitTitle = document.getElementById('classKitTitle');
+  const classPassiveBox = document.getElementById('classPassiveBox');
   const playerNameInput = document.getElementById('playerNameInput');
   const roomCodeInput = document.getElementById('roomCodeInput');
   const btnCreateRoom = document.getElementById('btnCreateRoom');
@@ -1491,16 +1653,64 @@
     });
   });
 
+  // Update Lobby Spellbook Showcase for chosen Mage Class
+  function updateLobbyClassDisplay(className) {
+    const classCfg = window.CLASSES[className] || window.CLASSES.fire;
+    const titleEl = document.getElementById('classKitTitle');
+    const listEl = document.getElementById('classSpellList');
+    const passiveEl = document.getElementById('classPassiveBox');
+    if (!listEl) return;
+
+    if (titleEl) titleEl.textContent = `${classCfg.name.toUpperCase()} SPELLBOOK`;
+    if (passiveEl) passiveEl.innerHTML = `<strong>Passive & Style:</strong> ${classCfg.desc}`;
+
+    const quickSpell = classCfg.spells.find(s => window.SPELLS[s].cost === 1);
+    const sigSpell = classCfg.spells.find(s => window.SPELLS[s].cost === 3);
+    const ultSpell = classCfg.spells.find(s => window.SPELLS[s].cost === 10);
+
+    const spellOrder = [
+      { sid: quickSpell, badge: '[1]', tag: '1M' },
+      { sid: sigSpell, badge: '[2]', tag: '3M' },
+      { sid: ultSpell, badge: '[3]', tag: '10M' },
+      { sid: 'heal', badge: '[4]', tag: '4M' },
+      { sid: 'block', badge: '[SPACE]', tag: '0M' }
+    ];
+
+    listEl.innerHTML = '';
+    spellOrder.forEach(item => {
+      const sp = window.SPELLS[item.sid];
+      if (!sp) return;
+      const row = document.createElement('div');
+      row.className = `class-spell-line ${sp.cost === 10 ? 'ult' : ''}`;
+      
+      const stat = sp.damage ? `${sp.damage} dmg` : (sp.heal ? `+${sp.heal} HP` : '1.5s shield');
+      const chant = `Say: "${sp.incantation}" or "${sp.name}"`;
+
+      row.innerHTML = `
+        <div class="class-spell-name-col">
+          <span class="spell-key-badge">${item.badge}</span>
+          <span>${sp.name}</span>
+        </div>
+        <div class="class-spell-stats-col">${item.tag} • ${stat}</div>
+        <div class="class-spell-voice-col">🎤 ${chant}</div>
+      `;
+      listEl.appendChild(row);
+    });
+  }
+
   // Class Selection in Lobby
   classSelectorGrid.querySelectorAll('.class-pick-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       classSelectorGrid.querySelectorAll('.class-pick-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       selectedClass = btn.dataset.class;
-      classDesc.textContent = window.CLASSES[selectedClass].desc;
+      updateLobbyClassDisplay(selectedClass);
       rebuildMages(selectedClass, 'frost');
     });
   });
+
+  // Initial lobby spellbook display
+  updateLobbyClassDisplay(selectedClass);
 
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('room')) {
@@ -1638,9 +1848,11 @@
       const btn = document.createElement('button');
       btn.className = `spell-card-btn ${spell.cost === 10 ? 'ult' : ''}`;
       btn.id = `btn_spell_${sid}`;
+      btn.title = `Say "${spell.incantation}" or "${spell.name}" to cast!`;
       btn.innerHTML = `
         <span class="spell-title"><span class="spell-key-badge">${item.badge}</span>${spell.name}</span>
         <span class="spell-meta"><span class="spell-cost-tag">${spell.cost > 0 ? spell.cost + 'M' : 'FREE'}</span> • ${spell.damage ? spell.damage + 'dmg' : spell.heal ? '+20' : '1.5s'}</span>
+        <span class="spell-chant-hint">"${spell.incantation}"</span>
         <div class="cd-overlay" id="cd_${sid}"></div>
       `;
       btn.addEventListener('click', () => {

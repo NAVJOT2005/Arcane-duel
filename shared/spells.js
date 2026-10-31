@@ -242,7 +242,7 @@ const SPELLS = {
     instant: true,
     element: 'earth',
     incantation: 'Rock on!',
-    aliases: ['rock on', 'pebble shot', 'pebbles', 'pebble', 'rock shot', 'pebbles']
+    aliases: ['rock on', 'pebble shot', 'pebble', 'pebbles', 'rock shot', 'rock']
   },
   boulder_smash: {
     name: 'Boulder Smash',

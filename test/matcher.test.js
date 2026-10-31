@@ -45,6 +45,13 @@ describe('matchSpell', () => {
     assert.equal(matchSpell('supernova'), 'inferno_nova');
   });
 
+  it('should match each spell by its official spell name', () => {
+    const { SPELLS } = require('../shared/spells');
+    for (const [sid, s] of Object.entries(SPELLS)) {
+      assert.equal(matchSpell(s.name), sid, `Spell name "${s.name}" should match ${sid}`);
+    }
+  });
+
   it('should respect player available kit filtering', () => {
     // If frost mage says 'burn', it shouldn't match fireball if only frost spells available
     const frostKit = ['ice_shard', 'block', 'blizzard_spear', 'heal', 'absolute_zero'];
