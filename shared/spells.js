@@ -1,34 +1,110 @@
-// ─── SPELL & PLAYER CONFIG ───
-// All game balance numbers live here. Tune these, not the logic.
-// Times are in milliseconds.
+// ─── SPELLS & MAGE CLASSES CONFIG ───
+// All numbers, costs, damages, cooldowns, and class definitions live here.
+
+const CLASSES = {
+  fire: {
+    name: 'Fire Mage',
+    element: 'fire',
+    robe: [96, 22, 36],
+    trim: [218, 172, 76],
+    hood: [64, 14, 26],
+    crystalGlow: '242, 140, 50',
+    crystalHex: 0xf2a541,
+    spells: ['fire_spark', 'block', 'fireball', 'heal', 'inferno_nova'],
+    desc: 'High burst damage. 3 Sparks ignite enemies for burn damage over time.'
+  },
+  frost: {
+    name: 'Frost Mage',
+    element: 'frost',
+    robe: [26, 48, 92],
+    trim: [170, 214, 232],
+    hood: [18, 34, 68],
+    crystalGlow: '90, 214, 232',
+    crystalHex: 0x5ad6e8,
+    spells: ['ice_shard', 'block', 'blizzard_spear', 'heal', 'absolute_zero'],
+    desc: 'Control & disruption. 3 Shards chill enemies to halve their mana regen.'
+  },
+  lightning: {
+    name: 'Lightning Mage',
+    element: 'lightning',
+    robe: [48, 22, 88],
+    trim: [238, 214, 90],
+    hood: [32, 14, 60],
+    crystalGlow: '245, 220, 60',
+    crystalHex: 0xf5dc3c,
+    spells: ['zap', 'block', 'thunder_strike', 'heal', 'judgment_bolt'],
+    desc: 'Rapid strikes & piercing. 3 Zaps drain 1 enemy mana. Thunder Strike bypasses block.'
+  },
+  earth: {
+    name: 'Earth Mage',
+    element: 'earth',
+    robe: [36, 58, 32],
+    trim: [180, 148, 96],
+    hood: [24, 40, 20],
+    crystalGlow: '110, 210, 80',
+    crystalHex: 0x6ed250,
+    spells: ['pebble_shot', 'block', 'boulder_smash', 'heal', 'cataclysm'],
+    desc: 'Sturdy fortress. 3 Pebbles cause tremors (+0.8s cooldown on enemy next spell).'
+  },
+  dark: {
+    name: 'Dark Mage',
+    element: 'dark',
+    robe: [20, 16, 32],
+    trim: [168, 85, 247],
+    hood: [12, 10, 22],
+    crystalGlow: '168, 85, 247',
+    crystalHex: 0xa855f7,
+    spells: ['shadow_dart', 'block', 'soul_drain', 'heal', 'abyssal_void'],
+    desc: 'Cursed sorcery. 3 Darts inflict Eclipse Blindness. Soul Drain steals 6 HP.'
+  }
+};
 
 const SPELLS = {
-  zap: {
-    name: 'Zap',
+  // ─── Universal Spells (All classes) ───
+  block: {
+    name: 'Block',
+    cost: 0,
+    windUp: 0,
+    cooldown: 4000,
+    damage: 0,
+    heal: 0,
+    duration: 1500,
+    blockable: false,
+    interruptible: false,
+    instant: true,
+    element: 'arcane',
+    incantation: 'Nope!',
+    aliases: ['nope', 'no', 'nop', 'know', 'nah', 'noup', 'shield', 'not today', 'block']
+  },
+  heal: {
+    name: 'Heal',
+    cost: 4,
+    windUp: 2000,
+    cooldown: 10000, // 10s cooldown to prevent dragging out matches
+    damage: 0,
+    heal: 20,
+    blockable: false,
+    interruptible: true, // interrupted by unblocked hits
+    instant: false,
+    element: 'arcane',
+    incantation: 'Patch me up!',
+    aliases: ['patch me up', 'not dead yet', 'patch me', 'rub some dirt on it', 'heal', 'medic', 'bandaid', 'fix me', 'cure']
+  },
+
+  // ─── Fire Mage Spells ───
+  fire_spark: {
+    name: 'Spark',
     cost: 1,
-    windUp: 0,          // instant
+    windUp: 0,
     cooldown: 1500,
     damage: 4,
     heal: 0,
     blockable: true,
     interruptible: false,
     instant: true,
-    incantation: 'Zap!',
-    aliases: ['zap', 'zapp', 'sap', 'zip', 'zep', 'cap']
-  },
-  block: {
-    name: 'Block',
-    cost: 0,
-    windUp: 0,          // instant
-    cooldown: 4000,
-    damage: 0,
-    heal: 0,
-    duration: 1500,     // how long the shield lasts
-    blockable: false,
-    interruptible: false,
-    instant: true,
-    incantation: 'Nope!',
-    aliases: ['nope', 'no', 'nop', 'know', 'nah', 'noup']
+    element: 'fire',
+    incantation: 'Spit hot!',
+    aliases: ['spit hot', 'sparks', 'spark', 'spit fire', 'hot spark']
   },
   fireball: {
     name: 'Fireball',
@@ -40,49 +116,210 @@ const SPELLS = {
     blockable: true,
     interruptible: false,
     instant: false,
+    element: 'fire',
     incantation: 'Eat flames!',
-    aliases: ['eat flames', 'it flames', 'eat flame', 'burn', 'born', 'bern', 'flames', 'eat flash']
+    aliases: ['eat flames', 'it flames', 'eat flame', 'burn', 'born', 'bern', 'flames', 'fireball', 'fire ball']
   },
-  lightning: {
-    name: 'Lightning',
-    cost: 3,
-    windUp: 1000,
-    cooldown: 0,
-    damage: 7,
-    heal: 0,
-    blockable: false,   // ignores Block — counter to turtling
-    interruptible: false,
-    instant: false,
-    incantation: 'Thunder strike!',
-    aliases: ['thunder strike', 'thunderstrike', 'thunder strikes', 'under strike', 'thunder', 'thunder struck']
-  },
-  heal: {
-    name: 'Heal',
-    cost: 4,
-    windUp: 2000,
-    cooldown: 0,
-    damage: 0,
-    heal: 20,
-    blockable: false,
-    interruptible: true, // any unblocked damage cancels it
-    instant: false,
-    incantation: "Mom's soup!",
-    aliases: ['moms soup', 'mums soup', 'mom soup', 'mama soup', "mom's soup", 'mum soup', 'mom so']
-  },
-  ultimate: {
-    name: 'Ultimate',
-    cost: 10,           // full mana
+  inferno_nova: {
+    name: 'Inferno Nova',
+    cost: 10,
     windUp: 3000,
     cooldown: 0,
     damage: 50,
+    chipDamage: 15,
     heal: 0,
-    chipDamage: 15,     // damage that goes through a normal Block
-    blockable: true,    // but only partially (chip damage still applies)
+    blockable: true,
     interruptible: true,
     instant: false,
-    manaRefund: 5,      // refunded if interrupted
-    incantation: 'Final explosion!',
-    aliases: ['final explosion', 'ultimate explosion', 'ultimate final explosion', 'final expo', 'vinyl explosion']
+    manaRefund: 5,
+    element: 'fire',
+    incantation: 'Supernova boom!',
+    aliases: ['supernova boom', 'supernova', 'inferno nova', 'nova boom', 'final explosion', 'ultimate explosion']
+  },
+
+  // ─── Frost Mage Spells ───
+  ice_shard: {
+    name: 'Ice Shard',
+    cost: 1,
+    windUp: 0,
+    cooldown: 1500,
+    damage: 4,
+    heal: 0,
+    blockable: true,
+    interruptible: false,
+    instant: true,
+    element: 'frost',
+    incantation: 'Brain freeze!',
+    aliases: ['brain freeze', 'ice shard', 'freeze shard', 'shard', 'ice']
+  },
+  blizzard_spear: {
+    name: 'Blizzard Spear',
+    cost: 3,
+    windUp: 1500,
+    cooldown: 0,
+    damage: 16,
+    heal: 0,
+    blockable: true,
+    interruptible: false,
+    instant: false,
+    element: 'frost',
+    incantation: 'Chill out!',
+    aliases: ['chill out', 'freeze', 'blizzard spear', 'blizzard', 'frost spear', 'cold snap']
+  },
+  absolute_zero: {
+    name: 'Absolute Zero',
+    cost: 10,
+    windUp: 3000,
+    cooldown: 0,
+    damage: 50,
+    chipDamage: 15,
+    heal: 0,
+    blockable: true,
+    interruptible: true,
+    instant: false,
+    manaRefund: 5,
+    element: 'frost',
+    incantation: 'Sub zero slam!',
+    aliases: ['sub zero slam', 'sub zero', 'absolute zero', 'zero slam', 'deep freeze']
+  },
+
+  // ─── Lightning Mage Spells ───
+  zap: {
+    name: 'Zap',
+    cost: 1,
+    windUp: 0,
+    cooldown: 1500,
+    damage: 4,
+    heal: 0,
+    blockable: true,
+    interruptible: false,
+    instant: true,
+    element: 'lightning',
+    incantation: 'Buzz off!',
+    aliases: ['buzz off', 'zap', 'zapp', 'sap', 'zip', 'zep', 'shock']
+  },
+  thunder_strike: {
+    name: 'Thunder Strike',
+    cost: 3,
+    windUp: 1000,
+    cooldown: 0,
+    damage: 14,
+    heal: 0,
+    blockable: false, // Ignores block
+    interruptible: false,
+    instant: false,
+    element: 'lightning',
+    incantation: 'Shock therapy!',
+    aliases: ['shock therapy', 'thunder strike', 'thunderstrike', 'thunder strikes', 'thunder', 'thunder struck']
+  },
+  judgment_bolt: {
+    name: 'Judgment Bolt',
+    cost: 10,
+    windUp: 3000,
+    cooldown: 0,
+    damage: 50,
+    chipDamage: 15,
+    heal: 0,
+    blockable: true,
+    interruptible: true,
+    instant: false,
+    manaRefund: 5,
+    element: 'lightning',
+    incantation: 'Smite them!',
+    aliases: ['smite them', 'smite', 'judgment bolt', 'judgement bolt', 'heavenly smite']
+  },
+
+  // ─── Earth Mage Spells ───
+  pebble_shot: {
+    name: 'Pebble Shot',
+    cost: 1,
+    windUp: 0,
+    cooldown: 1500,
+    damage: 4,
+    heal: 0,
+    blockable: true,
+    interruptible: false,
+    instant: true,
+    element: 'earth',
+    incantation: 'Rock on!',
+    aliases: ['rock on', 'pebble shot', 'pebbles', 'pebble', 'rock shot']
+  },
+  boulder_smash: {
+    name: 'Boulder Smash',
+    cost: 3,
+    windUp: 1500,
+    cooldown: 0,
+    damage: 18,
+    heal: 0,
+    blockable: true,
+    interruptible: false,
+    instant: false,
+    element: 'earth',
+    incantation: 'Eat dirt!',
+    aliases: ['eat dirt', 'heavy rock', 'boulder smash', 'boulder', 'rock smash']
+  },
+  cataclysm: {
+    name: 'Cataclysm',
+    cost: 10,
+    windUp: 3000,
+    cooldown: 0,
+    damage: 50,
+    chipDamage: 15,
+    heal: 0,
+    blockable: true,
+    interruptible: true,
+    instant: false,
+    manaRefund: 5,
+    element: 'earth',
+    incantation: 'Terra quake!',
+    aliases: ['terra quake', 'cataclysm', 'earthquake', 'ground slam', 'earth quake']
+  },
+
+  // ─── Dark Mage Spells ───
+  shadow_dart: {
+    name: 'Shadow Dart',
+    cost: 1,
+    windUp: 0,
+    cooldown: 1500,
+    damage: 4,
+    heal: 0,
+    blockable: true,
+    interruptible: false,
+    instant: true,
+    element: 'dark',
+    incantation: 'Begone!',
+    aliases: ['begone', 'shadow dart', 'be gone', 'dart', 'shadow']
+  },
+  soul_drain: {
+    name: 'Soul Drain',
+    cost: 3,
+    windUp: 1500,
+    cooldown: 0,
+    damage: 14,
+    lifesteal: 6, // Heals caster for 6 HP on hit
+    heal: 0,
+    blockable: true,
+    interruptible: false,
+    instant: false,
+    element: 'dark',
+    incantation: 'Darkness rise!',
+    aliases: ['darkness rise', 'soul drain', 'drain soul', 'darkness', 'drain']
+  },
+  abyssal_void: {
+    name: 'Abyssal Void',
+    cost: 10,
+    windUp: 3000,
+    cooldown: 0,
+    damage: 50,
+    chipDamage: 15,
+    heal: 0,
+    blockable: true,
+    interruptible: true,
+    instant: false,
+    manaRefund: 5,
+    element: 'dark',
+    incantation: 'Black hole plunge!',
+    aliases: ['black hole plunge', 'black hole', 'abyssal void', 'void plunge', 'abyss']
   }
 };
 
@@ -90,21 +327,21 @@ const PLAYER = {
   maxHp: 100,
   maxMana: 10,
   startMana: 5,
-  manaRegen: 1,           // per second
-  lowHpThreshold: 30,     // below this HP, regen increases
-  lowHpManaRegen: 1.5,    // regen rate when low HP
-  perfectBlockWindow: 600,// ms before hit: block started in this window = perfect
-  stunDuration: 1000,     // ms stunned after perfect block
-  ultimateStunDuration: 2000, // ms stunned after perfect-blocking an Ultimate
-  suddenDeathTime: 120000,// ms before sudden death kicks in
-  suddenDeathDps: 1       // HP lost per second during sudden death
+  manaRegen: 1,
+  lowHpThreshold: 30,
+  lowHpManaRegen: 1.5,
+  perfectBlockWindow: 600,
+  stunDuration: 1000,
+  ultimateStunDuration: 2000,
+  suddenDeathTime: 120000,
+  suddenDeathDps: 1
 };
 
-// CommonJS & Browser universal export
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { SPELLS, PLAYER };
+  module.exports = { CLASSES, SPELLS, PLAYER };
 }
 if (typeof window !== 'undefined') {
+  window.CLASSES = CLASSES;
   window.SPELLS = SPELLS;
   window.PLAYER = PLAYER;
 }

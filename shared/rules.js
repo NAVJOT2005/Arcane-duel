@@ -1,54 +1,62 @@
-// ─── GAME RULES ───
-// Pure functions of (state, action, time). No timers, no network.
-// The server calls these every tick. Tests call them with fake timestamps.
+// ─── GAME RULES & STATUS EFFECTS ───
+// Pure functions of (state, action, time). Authoritative and testable.
 
-const { SPELLS, PLAYER } = require('./spells');
+const { SPELLS, PLAYER, CLASSES } = require('./spells');
 
 // ─── State creation ───
 
-function createMatch(p1Id, p2Id, now) {
+function createMatch(p1Id, p2Id, now, p1Class = 'fire', p2Class = 'frost') {
   return {
     startedAt: now,
     winner: null,
     players: {
-      [p1Id]: createPlayer(now),
-      [p2Id]: createPlayer(now)
+      [p1Id]: createPlayer(now, p1Class),
+      [p2Id]: createPlayer(now, p2Class)
     },
-    // Ordered list of player IDs for iteration
     playerIds: [p1Id, p2Id]
   };
 }
 
-function createPlayer(now) {
+function createPlayer(now, mageClass = 'fire') {
+  const chosenClass = CLASSES[mageClass] ? mageClass : 'fire';
   return {
+    class: chosenClass,
+    spells: CLASSES[chosenClass].spells,
     hp: PLAYER.maxHp,
     mana: PLAYER.startMana,
     lastManaUpdate: now,
-    cooldowns: {},      // spellId -> timestamp when available again
+    cooldowns: {},
     stunUntil: 0,
     blockUntil: 0,
-    blockStartedAt: 0,  // when the current block was activated (for perfect block)
-    windUp: null         // { spellId, endsAt } or null
+    blockStartedAt: 0,
+    windUp: null, // { spellId, endsAt, total }
+    // Status effects system
+    quickHitCount: 0,
+    lastQuickHitAt: 0,
+    burnUntil: 0,
+    chillUntil: 0,
+    tremorNextCast: false,
+    blindUntil: 0,
+    curseNextCast: false,
+    stoneArmor: 0
   };
 }
-
-// ─── Helpers ───
 
 function opponentOf(state, playerId) {
   return state.playerIds.find(id => id !== playerId);
 }
 
-// Compute current mana from last update time (lazy regen)
+// Compute current mana with chill status reduction (50% slower if chilled)
 function getMana(player, now) {
-  const elapsed = (now - player.lastManaUpdate) / 1000; // seconds
-  const rate = player.hp <= PLAYER.lowHpThreshold
-    ? PLAYER.lowHpManaRegen
-    : PLAYER.manaRegen;
+  const elapsed = (now - player.lastManaUpdate) / 1000;
+  let rate = player.hp <= PLAYER.lowHpThreshold ? PLAYER.lowHpManaRegen : PLAYER.manaRegen;
+  if (now < player.chillUntil) {
+    rate *= 0.5; // Chilled reduces mana regen by 50%
+  }
   const mana = Math.min(PLAYER.maxMana, player.mana + elapsed * rate);
-  return Math.floor(mana * 10) / 10; // one decimal place
+  return Math.floor(mana * 10) / 10;
 }
 
-// Flush mana: compute current mana and update the timestamp
 function flushMana(player, now) {
   player.mana = getMana(player, now);
   player.lastManaUpdate = now;
@@ -76,18 +84,22 @@ function canCast(state, playerId, spellId, now) {
   if (isStunned(player, now)) return { ok: false, reason: 'stunned' };
   if (isOnCooldown(player, spellId, now)) return { ok: false, reason: 'cooldown' };
 
-  // Can't start a wind-up if already winding up (but instant spells are OK)
+  // Verify player has access to this spell in their kit
+  if (player.spells && !player.spells.includes(spellId)) {
+    return { ok: false, reason: 'spell_not_in_kit' };
+  }
+
   if (!spell.instant && player.windUp) return { ok: false, reason: 'already_casting' };
 
-  // Mana check
+  // Calculate actual mana cost (Dark Curse adds +1 mana cost)
   flushMana(player, now);
-  if (player.mana < spell.cost) return { ok: false, reason: 'no_mana' };
+  const actualCost = spell.cost + (player.curseNextCast ? 1 : 0);
+  if (player.mana < actualCost) return { ok: false, reason: 'no_mana' };
 
   return { ok: true };
 }
 
 // ─── Cast execution ───
-// Mutates state. Returns array of event objects.
 
 function tryCast(state, playerId, spellId, now) {
   const check = canCast(state, playerId, spellId, now);
@@ -99,17 +111,27 @@ function tryCast(state, playerId, spellId, now) {
   const spell = SPELLS[spellId];
   const events = [];
 
-  // Spend mana
+  // Deduct mana (incorporating curse if active)
   flushMana(player, now);
-  player.mana -= spell.cost;
+  const cost = spell.cost + (player.curseNextCast ? 1 : 0);
+  player.mana = Math.max(0, player.mana - cost);
+  if (player.curseNextCast) {
+    player.curseNextCast = false;
+    events.push({ type: 'curse_consumed', player: playerId });
+  }
 
-  // Set cooldown
-  if (spell.cooldown > 0) {
-    player.cooldowns[spellId] = now + spell.cooldown;
+  // Set cooldown (Tremor adds +800ms to next spell cooldown)
+  let cd = spell.cooldown;
+  if (player.tremorNextCast && cd > 0) {
+    cd += 800;
+    player.tremorNextCast = false;
+    events.push({ type: 'tremor_consumed', player: playerId });
+  }
+  if (cd > 0) {
+    player.cooldowns[spellId] = now + cd;
   }
 
   if (spell.instant) {
-    // ─── Instant spells ───
     if (spellId === 'block') {
       player.blockUntil = now + spell.duration;
       player.blockStartedAt = now;
@@ -118,15 +140,16 @@ function tryCast(state, playerId, spellId, now) {
         player: playerId,
         endsAt: player.blockUntil
       });
-    } else if (spellId === 'zap') {
+    } else {
+      // Instant Quick attack (Spark, Ice Shard, Zap, Pebble Shot, Shadow Dart)
       const oppId = opponentOf(state, playerId);
-      const hitEvents = applyDamage(state, oppId, spell.damage, true, now);
+      const hitEvents = applyDamage(state, oppId, spell.damage, spell.blockable, now, spellId, playerId);
       events.push(...hitEvents);
     }
   } else {
-    // ─── Wind-up spells ───
+    // Wind-up spells (Heal, Signature spells, Ultimates)
     const endsAt = now + spell.windUp;
-    player.windUp = { spellId, endsAt };
+    player.windUp = { spellId, endsAt, total: spell.windUp };
     events.push({
       type: 'cast_started',
       caster: playerId,
@@ -134,8 +157,8 @@ function tryCast(state, playerId, spellId, now) {
       endsAt
     });
 
-    // Ultimate resets opponent's block cooldown so they always have counterplay
-    if (spellId === 'ultimate') {
+    // Ultimate resets opponent block cooldown for fair anime counterplay
+    if (spell.cost === 10) {
       const oppId = opponentOf(state, playerId);
       state.players[oppId].cooldowns.block = 0;
       events.push({
@@ -148,11 +171,11 @@ function tryCast(state, playerId, spellId, now) {
   return events;
 }
 
-// ─── Damage application ───
-// blockable: whether this hit can be blocked (false for Lightning)
+// ─── Damage & Status Effects Application ───
 
-function applyDamage(state, targetId, damage, blockable, now) {
+function applyDamage(state, targetId, damage, blockable, now, spellId, attackerId) {
   const target = state.players[targetId];
+  const attacker = state.players[attackerId];
   const events = [];
   let blocked = false;
   let perfect = false;
@@ -160,17 +183,24 @@ function applyDamage(state, targetId, damage, blockable, now) {
 
   if (blockable && isBlocking(target, now)) {
     blocked = true;
-    // Perfect block: started blocking within the perfect block window
     const timeSinceBlock = now - target.blockStartedAt;
     if (timeSinceBlock <= PLAYER.perfectBlockWindow) {
       perfect = true;
       actualDamage = 0;
     } else {
-      actualDamage = 0; // normal block absorbs fully
+      actualDamage = 0;
     }
   }
 
-  // Apply damage
+  // Stone Armor absorb (Earth Mage mechanic)
+  if (actualDamage > 0 && target.stoneArmor > 0) {
+    const absorbed = Math.min(target.stoneArmor, actualDamage);
+    target.stoneArmor -= absorbed;
+    actualDamage -= absorbed;
+    events.push({ type: 'armor_absorbed', target: targetId, amount: absorbed, remaining: target.stoneArmor });
+  }
+
+  // Apply HP damage
   if (actualDamage > 0) {
     target.hp = Math.max(0, target.hp - actualDamage);
   }
@@ -178,20 +208,19 @@ function applyDamage(state, targetId, damage, blockable, now) {
   events.push({
     type: 'hit',
     target: targetId,
+    attacker: attackerId,
+    spell: spellId,
     damage: actualDamage,
     rawDamage: damage,
     blocked,
     perfect
   });
 
-  // Perfect block stuns the attacker
-  if (perfect) {
-    const attackerId = opponentOf(state, targetId);
-    const attacker = state.players[attackerId];
+  // ─── Perfect block reflection & stun ───
+  if (perfect && attackerId) {
     const stunTime = PLAYER.stunDuration;
     attacker.stunUntil = now + stunTime;
 
-    // Cancel attacker's wind-up if any
     if (attacker.windUp) {
       events.push({
         type: 'cast_cancelled',
@@ -209,23 +238,68 @@ function applyDamage(state, targetId, damage, blockable, now) {
     });
   }
 
-  // If target was winding up an interruptible spell, cancel it
-  if (actualDamage > 0 && target.windUp) {
-    const windUpSpell = SPELLS[target.windUp.spellId];
-    if (windUpSpell.interruptible) {
-      events.push({
-        type: 'cast_cancelled',
-        caster: targetId,
-        spell: target.windUp.spellId,
-        reason: 'interrupted'
-      });
-
-      // Refund mana for Ultimate
-      if (target.windUp.spellId === 'ultimate') {
-        target.mana = Math.min(PLAYER.maxMana, target.mana + SPELLS.ultimate.manaRefund);
+  // ─── Status Effects on Unblocked Hits ───
+  if (!blocked && actualDamage > 0) {
+    // 1. Interrupt interruptible spells
+    if (target.windUp) {
+      const windUpSpell = SPELLS[target.windUp.spellId];
+      if (windUpSpell && windUpSpell.interruptible) {
+        events.push({
+          type: 'cast_cancelled',
+          caster: targetId,
+          spell: target.windUp.spellId,
+          reason: 'interrupted'
+        });
+        if (windUpSpell.manaRefund) {
+          target.mana = Math.min(PLAYER.maxMana, target.mana + windUpSpell.manaRefund);
+        }
+        target.windUp = null;
       }
+    }
 
-      target.windUp = null;
+    // 2. Quick Spell 3-Hit Threshold Passive
+    const quickSpells = ['fire_spark', 'ice_shard', 'zap', 'pebble_shot', 'shadow_dart'];
+    if (spellId && quickSpells.includes(spellId)) {
+      if (now - attacker.lastQuickHitAt > 6000) {
+        attacker.quickHitCount = 0; // Reset streak if over 6s since last hit
+      }
+      attacker.quickHitCount += 1;
+      attacker.lastQuickHitAt = now;
+
+      if (attacker.quickHitCount >= 3) {
+        attacker.quickHitCount = 0;
+        // Trigger Element Passive
+        if (spellId === 'fire_spark') {
+          target.burnUntil = now + 2500;
+          events.push({ type: 'status_applied', player: targetId, status: 'burn', until: target.burnUntil });
+        } else if (spellId === 'ice_shard') {
+          target.chillUntil = now + 2500;
+          events.push({ type: 'status_applied', player: targetId, status: 'chill', until: target.chillUntil });
+        } else if (spellId === 'zap') {
+          flushMana(target, now);
+          target.mana = Math.max(0, target.mana - 1);
+          events.push({ type: 'mana_drained', target: targetId, amount: 1 });
+        } else if (spellId === 'pebble_shot') {
+          target.tremorNextCast = true;
+          events.push({ type: 'status_applied', player: targetId, status: 'tremor' });
+        } else if (spellId === 'shadow_dart') {
+          target.blindUntil = now + 2000;
+          events.push({ type: 'status_applied', player: targetId, status: 'blind', until: target.blindUntil });
+        }
+      }
+    }
+
+    // 3. Signature Spell Effects
+    if (spellId === 'soul_drain') {
+      // Dark Mage life steal
+      attacker.hp = Math.min(PLAYER.maxHp, attacker.hp + 6);
+      events.push({ type: 'heal', player: attackerId, amount: 6, newHp: attacker.hp });
+      target.curseNextCast = true;
+      events.push({ type: 'status_applied', player: targetId, status: 'curse' });
+    } else if (spellId === 'boulder_smash') {
+      // Earth Mage stone barrier
+      attacker.stoneArmor = Math.min(16, attacker.stoneArmor + 8);
+      events.push({ type: 'armor_gained', player: attackerId, total: attacker.stoneArmor });
     }
   }
 
@@ -233,8 +307,6 @@ function applyDamage(state, targetId, damage, blockable, now) {
 }
 
 // ─── Tick ───
-// Called every ~50ms by the server. Resolves completed wind-ups,
-// checks sudden death and win conditions.
 
 function tick(state, now) {
   if (state.winner) return [];
@@ -243,14 +315,22 @@ function tick(state, now) {
   for (const pid of state.playerIds) {
     const player = state.players[pid];
 
+    // Burn Damage-over-time (2 dmg every 800ms)
+    if (player.burnUntil > now) {
+      if (!player.lastBurnTickAt || now - player.lastBurnTickAt >= 800) {
+        player.lastBurnTickAt = now;
+        player.hp = Math.max(0, player.hp - 2);
+        events.push({ type: 'burn_tick', player: pid, damage: 2, hp: player.hp });
+      }
+    }
+
     // Resolve completed wind-ups
     if (player.windUp && now >= player.windUp.endsAt) {
-      const spell = SPELLS[player.windUp.spellId];
       const spellId = player.windUp.spellId;
+      const spell = SPELLS[spellId];
       player.windUp = null;
 
       if (spellId === 'heal') {
-        // Heal: add HP
         const healed = Math.min(spell.heal, PLAYER.maxHp - player.hp);
         player.hp += healed;
         events.push({
@@ -260,17 +340,14 @@ function tick(state, now) {
           newHp: player.hp
         });
       } else {
-        // Damage spell: hit the opponent
         const oppId = opponentOf(state, pid);
 
-        if (spellId === 'ultimate') {
-          // Ultimate: chip damage through block, full damage otherwise
+        // Check if Ultimate finisher
+        if (spell.cost === 10) {
           const opp = state.players[oppId];
           if (opp.blockUntil > now) {
-            // Check perfect block
             const timeSinceBlock = now - opp.blockStartedAt;
             if (timeSinceBlock <= PLAYER.perfectBlockWindow) {
-              // Perfect block: 0 damage, stun attacker for longer
               events.push({
                 type: 'hit',
                 target: oppId,
@@ -279,24 +356,13 @@ function tick(state, now) {
                 blocked: true,
                 perfect: true
               });
-              // Stun the attacker (longer for Ultimate)
               player.stunUntil = now + PLAYER.ultimateStunDuration;
-              if (player.windUp) {
-                events.push({
-                  type: 'cast_cancelled',
-                  caster: pid,
-                  spell: player.windUp.spellId,
-                  reason: 'stunned'
-                });
-                player.windUp = null;
-              }
               events.push({
                 type: 'stunned',
                 player: pid,
                 until: player.stunUntil
               });
             } else {
-              // Normal block: chip damage
               opp.hp = Math.max(0, opp.hp - spell.chipDamage);
               events.push({
                 type: 'hit',
@@ -308,7 +374,6 @@ function tick(state, now) {
               });
             }
           } else {
-            // No block: full damage
             opp.hp = Math.max(0, opp.hp - spell.damage);
             events.push({
               type: 'hit',
@@ -320,8 +385,8 @@ function tick(state, now) {
             });
           }
         } else {
-          // Normal damage spell (Fireball, Lightning)
-          const hitEvents = applyDamage(state, oppId, spell.damage, spell.blockable, now);
+          // Normal wind-up spell (Fireball, Blizzard Spear, Boulder Smash, Soul Drain, etc.)
+          const hitEvents = applyDamage(state, oppId, spell.damage, spell.blockable, now, spellId, pid);
           events.push(...hitEvents);
         }
       }
@@ -331,7 +396,7 @@ function tick(state, now) {
   // Sudden death: after 120s, both lose 1 HP/s
   const elapsed = now - state.startedAt;
   if (elapsed >= PLAYER.suddenDeathTime) {
-    const hpLoss = PLAYER.suddenDeathDps * 0.05; // per tick (50ms)
+    const hpLoss = PLAYER.suddenDeathDps * 0.05;
     for (const pid of state.playerIds) {
       state.players[pid].hp = Math.max(0, state.players[pid].hp - hpLoss);
     }
@@ -351,21 +416,29 @@ function tick(state, now) {
   return events;
 }
 
-// ─── State snapshot (for sending to clients) ───
+// ─── State snapshot ───
 
 function getSnapshot(state, now) {
   const snap = {};
   for (const pid of state.playerIds) {
     const p = state.players[pid];
     snap[pid] = {
+      class: p.class,
       hp: Math.round(p.hp * 10) / 10,
       mana: Math.round(getMana(p, now) * 10) / 10,
       blockActive: isBlocking(p, now),
       stunned: isStunned(p, now),
       windUp: p.windUp ? { spell: p.windUp.spellId, endsAt: p.windUp.endsAt } : null,
-      cooldowns: {}
+      cooldowns: {},
+      status: {
+        burn: p.burnUntil > now,
+        chill: p.chillUntil > now,
+        tremor: p.tremorNextCast,
+        blind: p.blindUntil > now,
+        curse: p.curseNextCast,
+        armor: p.stoneArmor
+      }
     };
-    // Include cooldown remaining for each spell
     for (const [sid, until] of Object.entries(p.cooldowns)) {
       if (until > now) {
         snap[pid].cooldowns[sid] = until - now;

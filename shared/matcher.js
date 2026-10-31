@@ -2,32 +2,8 @@
 // Dependency-free text matching for voice & typed incantations.
 // Works in both Node.js and Browser environments.
 
-const SPELL_ALIASES = {
-  zap: [
-    'zap', 'zapp', 'sap', 'zip', 'zep', 'cap', 'tap'
-  ],
-  block: [
-    'nope', 'no', 'nop', 'know', 'nah', 'noup', 'shield', 'not today', 'block'
-  ],
-  fireball: [
-    'eat flames', 'it flames', 'eat flame', 'burn', 'born', 'bern', 'flames', 'eat flash',
-    'fireball', 'fire ball', 'flame', 'heat'
-  ],
-  lightning: [
-    'thunder strike', 'thunderstrike', 'thunder strikes', 'under strike', 'thunder',
-    'thunder struck', 'lightning', 'lightening', 'strike', 'shock'
-  ],
-  heal: [
-    'moms soup', 'mums soup', 'mom soup', 'mama soup', "mom's soup", 'mum soup',
-    'mom so', 'heal', 'soup', 'cure', 'restore'
-  ],
-  ultimate: [
-    'final explosion', 'ultimate explosion', 'ultimate final explosion', 'final expo',
-    'vinyl explosion', 'ultimate', 'explosion', 'kamehameha'
-  ]
-};
+const { SPELLS } = require ? require('./spells') : window;
 
-// Clean incoming speech text: lowercase, remove special characters, collapse whitespace
 function cleanText(text) {
   if (!text) return '';
   return String(text)
@@ -37,7 +13,6 @@ function cleanText(text) {
     .trim();
 }
 
-// Compute simple Levenshtein distance for fuzzy typo tolerance on short words
 function levenshtein(a, b) {
   if (a === b) return 0;
   if (!a.length) return b.length;
@@ -63,35 +38,48 @@ function levenshtein(a, b) {
   return row[b.length];
 }
 
-// Match input text against spell aliases
-// 1. Direct phrase inclusion (checking longer aliases first)
-// 2. Word-by-word fuzzy match with 1 typo tolerance
-function matchSpell(text) {
+// Build alias list automatically from SPELLS dictionary
+function getSpellAliasEntries(spellsDict) {
+  const dict = spellsDict || (typeof SPELLS !== 'undefined' ? SPELLS : {});
+  const entries = [];
+  for (const [spellId, spell] of Object.entries(dict)) {
+    if (spell.incantation) {
+      entries.push({ spellId, alias: cleanText(spell.incantation) });
+    }
+    if (Array.isArray(spell.aliases)) {
+      for (const a of spell.aliases) {
+        entries.push({ spellId, alias: cleanText(a) });
+      }
+    }
+  }
+  // Sort longest aliases first
+  entries.sort((a, b) => b.alias.length - a.alias.length);
+  return entries;
+}
+
+function matchSpell(text, availableSpells) {
   const clean = cleanText(text);
   if (!clean) return null;
 
-  // Flatten aliases with length sorting (longest alias first so 'eat flames' matches before 'flame')
-  const allEntries = [];
-  for (const [spellId, aliases] of Object.entries(SPELL_ALIASES)) {
-    for (const alias of aliases) {
-      allEntries.push({ spellId, alias: cleanText(alias) });
-    }
-  }
-  allEntries.sort((a, b) => b.alias.length - a.alias.length);
+  const entries = getSpellAliasEntries(typeof SPELLS !== 'undefined' ? SPELLS : null);
 
-  // Exact / substring check
-  for (const entry of allEntries) {
+  // Filter by player's active spell kit if provided
+  const validEntries = availableSpells && availableSpells.length
+    ? entries.filter(e => availableSpells.includes(e.spellId))
+    : entries;
+
+  // 1. Exact or Substring match
+  for (const entry of validEntries) {
     if (clean.includes(entry.alias)) {
       return entry.spellId;
     }
   }
 
-  // Token fuzzy check (e.g., if heard word has 1 character transposition or typo)
+  // 2. Fuzzy match token with 1 typo tolerance
   const words = clean.split(' ');
   for (const word of words) {
     if (word.length < 3) continue;
-    for (const entry of allEntries) {
-      // Only single-word aliases qualify for 1-distance fuzzy matching
+    for (const entry of validEntries) {
       if (!entry.alias.includes(' ')) {
         const dist = levenshtein(word, entry.alias);
         if (dist <= 1) {
@@ -105,10 +93,10 @@ function matchSpell(text) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { matchSpell, cleanText, levenshtein, SPELL_ALIASES };
+  module.exports = { matchSpell, cleanText, levenshtein, getSpellAliasEntries };
 }
 if (typeof window !== 'undefined') {
   window.matchSpell = matchSpell;
   window.cleanText = cleanText;
-  window.SPELL_ALIASES = SPELL_ALIASES;
+  window.getSpellAliasEntries = getSpellAliasEntries;
 }

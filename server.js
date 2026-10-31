@@ -4,7 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const crypto = require('crypto');
 const { createMatch, tryCast, tick, getSnapshot } = require('./shared/rules');
-const { SPELLS } = require('./shared/spells');
+const { CLASSES, SPELLS } = require('./shared/spells');
 const { matchSpell } = require('./shared/matcher');
 
 const app = express();
@@ -17,18 +17,6 @@ const io = new Server(server, {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/shared', express.static(path.join(__dirname, 'shared')));
 
-// ─── Room State Management ───
-// Map<code, Room>
-// Room: {
-//   code: string,
-//   state: 'waiting' | 'in_progress' | 'finished',
-//   players: [{ id: socket.id, token: string, name: string, rematchRequested: boolean, disconnectedAt: number|null }],
-//   matchState: object | null,
-//   tickInterval: Timer | null,
-//   snapshotInterval: Timer | null,
-//   disconnectTimer: Timer | null,
-//   disconnectDeadline: number | null
-// }
 const rooms = new Map();
 
 function generateRoomCode() {
@@ -48,6 +36,7 @@ function getRoomPlayerList(room) {
   return room.players.map(p => ({
     id: p.id,
     name: p.name,
+    class: p.class || 'fire',
     rematchRequested: !!p.rematchRequested,
     isOnline: !p.disconnectedAt
   }));
@@ -72,26 +61,27 @@ function startMatch(room) {
   p1.rematchRequested = false;
   p2.rematchRequested = false;
 
-  // Clear disconnect timers if any
   if (room.disconnectTimer) {
     clearTimeout(room.disconnectTimer);
     room.disconnectTimer = null;
     room.disconnectDeadline = null;
   }
 
-  room.matchState = createMatch(p1.id, p2.id, now);
+  const c1 = p1.class && CLASSES[p1.class] ? p1.class : 'fire';
+  const c2 = p2.class && CLASSES[p2.class] ? p2.class : 'frost';
+
+  room.matchState = createMatch(p1.id, p2.id, now, c1, c2);
 
   io.to(room.code).emit('match_start', {
     startsAt: now,
-    p1: { id: p1.id, name: p1.name },
-    p2: { id: p2.id, name: p2.name },
+    p1: { id: p1.id, name: p1.name, class: c1 },
+    p2: { id: p2.id, name: p2.name, class: c2 },
     serverTime: now
   });
 
   if (room.tickInterval) clearInterval(room.tickInterval);
   if (room.snapshotInterval) clearInterval(room.snapshotInterval);
 
-  // 50ms authoritative tick
   room.tickInterval = setInterval(() => {
     if (!room.matchState || room.state !== 'in_progress') return;
     const tickNow = Date.now();
@@ -110,7 +100,6 @@ function startMatch(room) {
     }
   }, 50);
 
-  // 250ms snapshot sync
   room.snapshotInterval = setInterval(() => {
     if (!room.matchState || room.state !== 'in_progress') return;
     const snapNow = Date.now();
@@ -133,28 +122,26 @@ function cleanupRoom(code) {
   rooms.delete(code);
 }
 
-// ─── Socket Connection & Handlers ───
 io.on('connection', (socket) => {
   let currentRoomCode = null;
-  let playerToken = null;
 
-  // Latency & clock sync
   socket.on('ping_server', (clientTime, callback) => {
     if (typeof callback === 'function') {
       callback({ serverTime: Date.now(), clientTime });
     }
   });
 
-  // Create room
+  // Create room with chosen mage class
   socket.on('create_room', (data, callback) => {
     const name = (data && data.name ? String(data.name).trim().slice(0, 15) : '') || 'Mage 1';
+    const mageClass = (data && data.class && CLASSES[data.class]) ? data.class : 'fire';
     const code = generateRoomCode();
     const token = crypto.randomUUID();
 
     const room = {
       code,
       state: 'waiting',
-      players: [{ id: socket.id, token, name, rematchRequested: false, disconnectedAt: null }],
+      players: [{ id: socket.id, token, name, class: mageClass, rematchRequested: false, disconnectedAt: null }],
       matchState: null,
       tickInterval: null,
       snapshotInterval: null,
@@ -165,7 +152,6 @@ io.on('connection', (socket) => {
     rooms.set(code, room);
     socket.join(code);
     currentRoomCode = code;
-    playerToken = token;
 
     if (typeof callback === 'function') {
       callback({ ok: true, code, token });
@@ -173,10 +159,11 @@ io.on('connection', (socket) => {
     broadcastRoomUpdate(room);
   });
 
-  // Join or Reconnect to room
+  // Join or Reconnect to room with chosen class
   socket.on('join_room', (data, callback) => {
     const code = (data && data.code ? String(data.code).trim().toUpperCase() : '');
     const name = (data && data.name ? String(data.name).trim().slice(0, 15) : '') || 'Mage 2';
+    const mageClass = (data && data.class && CLASSES[data.class]) ? data.class : 'frost';
     const existingToken = data && data.token ? String(data.token) : null;
 
     const room = rooms.get(code);
@@ -185,23 +172,19 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Check if player is reconnecting with token
     let player = existingToken ? room.players.find(p => p.token === existingToken) : null;
 
     if (player) {
-      // Reconnection
       const oldId = player.id;
       player.id = socket.id;
       player.disconnectedAt = null;
 
-      // Update matchState if match is active
       if (room.matchState && room.matchState.players[oldId]) {
         room.matchState.players[socket.id] = room.matchState.players[oldId];
         delete room.matchState.players[oldId];
         room.matchState.playerIds = room.matchState.playerIds.map(id => id === oldId ? socket.id : id);
       }
 
-      // Clear disconnect countdown if running
       if (room.disconnectTimer) {
         clearTimeout(room.disconnectTimer);
         room.disconnectTimer = null;
@@ -215,20 +198,18 @@ io.on('connection', (socket) => {
 
       socket.join(code);
       currentRoomCode = code;
-      playerToken = player.token;
 
       if (typeof callback === 'function') {
         callback({ ok: true, code, token: player.token, reconnected: true });
       }
 
-      // If reconnected to in-progress game, send immediate match context
       if (room.state === 'in_progress' && room.matchState) {
         const p1 = room.players[0];
         const p2 = room.players[1];
         socket.emit('match_start', {
           startsAt: room.matchState.startedAt,
-          p1: { id: p1.id, name: p1.name },
-          p2: { id: p2.id, name: p2.name },
+          p1: { id: p1.id, name: p1.name, class: p1.class },
+          p2: { id: p2.id, name: p2.name, class: p2.class },
           serverTime: Date.now()
         });
       }
@@ -237,19 +218,17 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Normal join as new player
     if (room.players.length >= 2) {
       if (typeof callback === 'function') callback({ ok: false, error: 'Room is full' });
       return;
     }
 
     const token = crypto.randomUUID();
-    player = { id: socket.id, token, name, rematchRequested: false, disconnectedAt: null };
+    player = { id: socket.id, token, name, class: mageClass, rematchRequested: false, disconnectedAt: null };
     room.players.push(player);
 
     socket.join(code);
     currentRoomCode = code;
-    playerToken = token;
 
     if (typeof callback === 'function') {
       callback({ ok: true, code, token });
@@ -262,15 +241,30 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Switch class in waiting lobby
+  socket.on('select_class', (data) => {
+    if (!currentRoomCode) return;
+    const room = rooms.get(currentRoomCode);
+    if (!room || room.state !== 'waiting') return;
+    const player = room.players.find(p => p.id === socket.id);
+    if (player && data && data.class && CLASSES[data.class]) {
+      player.class = data.class;
+      broadcastRoomUpdate(room);
+    }
+  });
+
   // Cast spell
   socket.on('cast', (data) => {
     if (!currentRoomCode) return;
     const room = rooms.get(currentRoomCode);
     if (!room || room.state !== 'in_progress' || !room.matchState) return;
 
+    const player = room.matchState.players[socket.id];
+    if (!player) return;
+
     let spellId = data && data.spell ? String(data.spell).toLowerCase() : '';
     if (!SPELLS[spellId] && (data.text || data.chant)) {
-      const detected = matchSpell(data.text || data.chant);
+      const detected = matchSpell(data.text || data.chant, player.spells);
       if (detected) spellId = detected;
     }
 
@@ -299,7 +293,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Rematch request
+  // Rematch
   socket.on('rematch', () => {
     if (!currentRoomCode) return;
     const room = rooms.get(currentRoomCode);
@@ -317,7 +311,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Leave room intentionally (instant forfeit)
+  // Leave room
   socket.on('leave_room', () => {
     if (!currentRoomCode) return;
     const code = currentRoomCode;
@@ -326,7 +320,6 @@ io.on('connection', (socket) => {
     socket.leave(code);
 
     if (!room) return;
-
     room.players = room.players.filter(p => p.id !== socket.id);
 
     if (room.players.length === 0) {
@@ -346,7 +339,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Disconnect / drop handling (30s grace window)
   socket.on('disconnect', () => {
     if (!currentRoomCode) return;
     const code = currentRoomCode;
@@ -358,7 +350,6 @@ io.on('connection', (socket) => {
 
     player.disconnectedAt = Date.now();
 
-    // If match was in progress, grant a 30s reconnect window before awarding forfeit win
     if (room.state === 'in_progress') {
       const deadline = Date.now() + 30000;
       room.disconnectDeadline = deadline;
@@ -370,7 +361,6 @@ io.on('connection', (socket) => {
         serverTime: Date.now()
       });
 
-      // Schedule forfeit after 30 seconds if player hasn't reconnected
       if (room.disconnectTimer) clearTimeout(room.disconnectTimer);
       room.disconnectTimer = setTimeout(() => {
         const r = rooms.get(code);
@@ -391,7 +381,6 @@ io.on('connection', (socket) => {
         broadcastRoomUpdate(r);
       }, 30000);
     } else {
-      // If still in lobby and left, clean up
       room.players = room.players.filter(p => p.id !== socket.id);
       if (room.players.length === 0) {
         cleanupRoom(code);
@@ -402,8 +391,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Mage Duel server running on port ${PORT}`);
+  console.log(`Mage Duel 3D server running on port ${PORT}`);
 });

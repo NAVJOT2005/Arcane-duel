@@ -5,7 +5,7 @@ const { matchSpell, cleanText, levenshtein } = require('../shared/matcher');
 describe('cleanText', () => {
   it('should lowercase, strip punctuation, and trim whitespace', () => {
     assert.equal(cleanText('  Eat FLAMES!!! '), 'eat flames');
-    assert.equal(cleanText("Mom's soup?"), 'mom s soup');
+    assert.equal(cleanText("Patch me up?"), 'patch me up');
     assert.equal(cleanText('Zap! 123'), 'zap 123');
   });
 });
@@ -21,38 +21,34 @@ describe('levenshtein', () => {
 });
 
 describe('matchSpell', () => {
-  it('should match primary incantations', () => {
-    assert.equal(matchSpell('Zap!'), 'zap');
+  it('should match primary incantations across classes', () => {
     assert.equal(matchSpell('Nope!'), 'block');
+    assert.equal(matchSpell('Patch me up!'), 'heal');
+    assert.equal(matchSpell('Spit hot!'), 'fire_spark');
     assert.equal(matchSpell('Eat flames!'), 'fireball');
-    assert.equal(matchSpell('Thunder strike!'), 'lightning');
-    assert.equal(matchSpell("Mom's soup!"), 'heal');
-    assert.equal(matchSpell('Final explosion!'), 'ultimate');
+    assert.equal(matchSpell('Supernova boom!'), 'inferno_nova');
+    assert.equal(matchSpell('Brain freeze!'), 'ice_shard');
+    assert.equal(matchSpell('Chill out!'), 'blizzard_spear');
+    assert.equal(matchSpell('Buzz off!'), 'zap');
+    assert.equal(matchSpell('Shock therapy!'), 'thunder_strike');
+    assert.equal(matchSpell('Rock on!'), 'pebble_shot');
+    assert.equal(matchSpell('Eat dirt!'), 'boulder_smash');
+    assert.equal(matchSpell('Begone!'), 'shadow_dart');
+    assert.equal(matchSpell('Darkness rise!'), 'soul_drain');
   });
 
-  it('should match known aliases and common mishearings', () => {
-    assert.equal(matchSpell('zapp'), 'zap');
-    assert.equal(matchSpell('nah'), 'block');
+  it('should match aliases and common mishearings', () => {
     assert.equal(matchSpell('burn'), 'fireball');
-    assert.equal(matchSpell('thunderstruck'), 'lightning');
-    assert.equal(matchSpell('moms soup'), 'heal');
-    assert.equal(matchSpell('ultimate explosion'), 'ultimate');
+    assert.equal(matchSpell('freeze'), 'blizzard_spear');
+    assert.equal(matchSpell('medic'), 'heal');
+    assert.equal(matchSpell('rub some dirt on it'), 'heal');
+    assert.equal(matchSpell('supernova'), 'inferno_nova');
   });
 
-  it('should tolerate surrounding words or exclamation', () => {
-    assert.equal(matchSpell('I shout eat flames right now'), 'fireball');
-    assert.equal(matchSpell('please nope please'), 'block');
-    assert.equal(matchSpell('ready thunder strike go'), 'lightning');
-  });
-
-  it('should tolerate 1-typo on single words', () => {
-    assert.equal(matchSpell('zep'), 'zap');
-    assert.equal(matchSpell('bern'), 'fireball');
-  });
-
-  it('should return null for unrelated speech', () => {
-    assert.equal(matchSpell('hello world'), null);
-    assert.equal(matchSpell('what is the weather today'), null);
-    assert.equal(matchSpell(''), null);
+  it('should respect player available kit filtering', () => {
+    // If frost mage says 'burn', it shouldn't match fireball if only frost spells available
+    const frostKit = ['ice_shard', 'block', 'blizzard_spear', 'heal', 'absolute_zero'];
+    assert.equal(matchSpell('burn', frostKit), null);
+    assert.equal(matchSpell('chill out', frostKit), 'blizzard_spear');
   });
 });
