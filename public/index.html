@@ -584,9 +584,10 @@
   stage.insertBefore(renderer.domElement, stage.firstChild);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x07050f, 8, 30);
-  const camera = new THREE.PerspectiveCamera(48, W / H, 0.1, 70);
-  camera.position.set(-13, 4.8, 0);
+  scene.fog = new THREE.Fog(0x07050f, 10, 32);
+  const camera = new THREE.PerspectiveCamera(52, W / H, 0.1, 70);
+  camera.position.set(0, 5.2, 11);
+  camera.lookAt(0, 1.8, 0);
 
   // Procedural retro texture generator
   function rng(s) {
@@ -863,8 +864,8 @@
 
   let ME3D = create3DMage('fire', 31);
   let OP3D = create3DMage('frost', 57);
-  ME3D.root.position.set(-5, 0, 0);
-  OP3D.root.position.set(5, 0, 0);
+  ME3D.root.position.set(-4.5, 0, 0);
+  OP3D.root.position.set(4.5, 0, 0);
   scene.add(ME3D.root); scene.add(OP3D.root);
 
   function rebuildMages(myClass, oppClass) {
@@ -872,8 +873,8 @@
     scene.remove(OP3D.root);
     ME3D = create3DMage(myClass, 31);
     OP3D = create3DMage(oppClass, 57);
-    ME3D.root.position.set(-5, 0, 0);
-    OP3D.root.position.set(5, 0, 0);
+    ME3D.root.position.set(-4.5, 0, 0);
+    OP3D.root.position.set(4.5, 0, 0);
     scene.add(ME3D.root);
     scene.add(OP3D.root);
   }
@@ -1092,13 +1093,13 @@
 
   socket.on('hit', (ev) => {
     const isTargetYou = ev.target === myId;
-    const fromX = isTargetYou ? 5 : -5;
-    const toX = isTargetYou ? -5 : 5;
+    const fromX = isTargetYou ? 4.5 : -4.5;
+    const toX = isTargetYou ? -4.5 : 4.5;
     spawn3DProjectile(ev.spell || 'fire_spark', fromX, 0, toX, 0);
 
     setTimeout(() => {
       triggerHitBoom(toX, 0, ev.spell ? window.SPELLS[ev.spell].element : 'fire');
-      shakeScreen(0.2);
+      shakeScreen(0.25);
     }, 280);
   });
 
@@ -1351,12 +1352,16 @@
     burst.update(dt, -4);
     embers.update(dt, 0);
 
+    // Mages face each other: ME (on left) faces right, OP (on right) faces left
+    ME3D.g.rotation.y = Math.PI / 2;
+    OP3D.g.rotation.y = -Math.PI / 2;
+
     // Hit flash fade & screen shake
     hitFlash.intensity = Math.max(0, hitFlash.intensity - dt * 12);
     shakeVal = Math.max(0, shakeVal - dt * 0.8);
 
-    camera.position.set(-13 + (Math.random() - 0.5) * shakeVal, 4.8 + (Math.random() - 0.5) * shakeVal, 0);
-    camera.lookAt(0, 2.0, 0);
+    camera.position.set((Math.random() - 0.5) * shakeVal, 5.2 + (Math.random() - 0.5) * shakeVal, 11);
+    camera.lookAt(0, 1.8, 0);
 
     renderer.render(scene, camera);
   }
