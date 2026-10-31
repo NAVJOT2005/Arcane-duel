@@ -348,7 +348,7 @@
       const r = new SpeechRecognition();
       r.lang = langSelect.value;
       r.interimResults = true;
-      r.continuous = true;
+      r.continuous = false;
       r.maxAlternatives = 1;
 
       r.onresult = (event) => {
@@ -406,9 +406,15 @@
       };
 
       r.onend = () => {
-        // Auto-restart if we're supposed to be listening
+        // Auto-restart after a short delay if we're supposed to be listening.
+        // The delay prevents rapid reconnect spam that causes network errors.
         if (listening) {
-          try { r.start(); } catch (e) { /* already started */ }
+          setTimeout(() => {
+            if (listening) {
+              try { recognition = createRecognition(); recognition.start(); }
+              catch (e) { /* will retry on next onend */ }
+            }
+          }, 300);
         }
       };
 
