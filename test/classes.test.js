@@ -97,6 +97,22 @@ describe('Class Status Effects', () => {
     assert.equal(state.players.p1.hp, 86);
   });
 
+  it('Dark Mage: 3 Shadow Darts blind opponent only, not the caster', () => {
+    const state = setup(0, 'dark', 'fire');
+    tryCast(state, 'p1', 'shadow_dart', 0);
+    tryCast(state, 'p1', 'shadow_dart', 1600);
+    const evs3 = tryCast(state, 'p1', 'shadow_dart', 3200);
+    const blindEv = evs3.find(e => e.type === 'status_applied' && e.status === 'blind');
+    assert.ok(blindEv, 'Should emit status_applied blind event');
+    assert.equal(blindEv.player, 'p2', 'Blind status must target opponent p2, not caster p1');
+    assert.ok(state.players.p2.blindUntil > 3200, 'Opponent p2 should have blind timer set');
+    assert.equal(state.players.p1.blindUntil, 0, 'Caster p1 should NOT have blind timer set');
+
+    const snap = getSnapshot(state, 3500);
+    assert.equal(snap.p2.status.blind, true, 'Opponent status should show blind: true');
+    assert.equal(snap.p1.status.blind, false, 'Caster status should show blind: false');
+  });
+
   it('Earth Mage: Boulder Smash grants Stone Armor barrier', () => {
     const state = setup(0, 'earth', 'fire');
     tryCast(state, 'p1', 'boulder_smash', 0);

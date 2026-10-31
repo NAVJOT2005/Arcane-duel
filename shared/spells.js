@@ -74,7 +74,7 @@ const SPELLS = {
     instant: true,
     element: 'arcane',
     incantation: 'Nope!',
-    aliases: ['nope', 'no', 'nop', 'know', 'nah', 'noup', 'shield', 'not today', 'block']
+    aliases: ['nope', 'no', 'nop', 'know', 'nah', 'noup', 'shield', 'sheeld', 'sheild', 'shild', 'not today', 'block', 'blok', 'blck', 'guard', 'defend', 'parry', 'lock', 'plock', 'block it', 'put up shield']
   },
   heal: {
     name: 'Heal',
@@ -88,7 +88,7 @@ const SPELLS = {
     instant: false,
     element: 'arcane',
     incantation: 'Patch me up!',
-    aliases: ['patch me up', 'not dead yet', 'patch me', 'rub some dirt on it', 'heal', 'medic', 'bandaid', 'fix me', 'cure']
+    aliases: ['patch me up', 'not dead yet', 'patch me', 'rub some dirt on it', 'heal', 'heel', 'hil', 'hill', 'medic', 'bandaid', 'fix me', 'cure', 'recover', 'healing', 'heal me', 'help me']
   },
 
   // ─── Fire Mage Spells ───
@@ -104,7 +104,7 @@ const SPELLS = {
     instant: true,
     element: 'fire',
     incantation: 'Spit hot!',
-    aliases: ['spit hot', 'sparks', 'spark', 'spit fire', 'hot spark', 'fire spark', 'hot']
+    aliases: ['spit hot', 'sparks', 'spark', 'sparc', 'spit fire', 'hot spark', 'fire spark', 'park', 'bark', 'spit out', 'spark shot']
   },
   fireball: {
     name: 'Fireball',
@@ -118,7 +118,7 @@ const SPELLS = {
     instant: false,
     element: 'fire',
     incantation: 'Eat flames!',
-    aliases: ['eat flames', 'it flames', 'eat flame', 'burn', 'born', 'bern', 'flames', 'fireball', 'fire ball']
+    aliases: ['eat flames', 'it flames', 'eat flame', 'burn', 'born', 'bern', 'flames', 'fireball', 'fire ball', 'fire bol', 'firebol', 'fire boll', 'flame ball', 'throw fire', 'eat the flames', 'heat flames', 'fire bowl']
   },
   inferno_nova: {
     name: 'Inferno Nova',
@@ -134,7 +134,7 @@ const SPELLS = {
     manaRefund: 5,
     element: 'fire',
     incantation: 'Supernova boom!',
-    aliases: ['supernova boom', 'supernova', 'inferno nova', 'nova boom', 'final explosion', 'ultimate explosion', 'inferno', 'nova']
+    aliases: ['supernova boom', 'supernova', 'inferno nova', 'nova boom', 'final explosion', 'ultimate explosion', 'inferno', 'nova', 'super nova', 'super nova boom', 'inferno boom', 'inner nova']
   },
 
   // ─── Frost Mage Spells ───
@@ -150,7 +150,7 @@ const SPELLS = {
     instant: true,
     element: 'frost',
     incantation: 'Brain freeze!',
-    aliases: ['brain freeze', 'ice shard', 'freeze shard', 'shard', 'ice', 'ice shards']
+    aliases: ['brain freeze', 'ice shard', 'freeze shard', 'shard', 'shards', 'ice shards', 'cold shard', 'brain froze', 'ice shards']
   },
   blizzard_spear: {
     name: 'Blizzard Spear',
@@ -164,7 +164,7 @@ const SPELLS = {
     instant: false,
     element: 'frost',
     incantation: 'Chill out!',
-    aliases: ['chill out', 'freeze', 'blizzard spear', 'blizzard', 'frost spear', 'cold snap', 'spear', 'frost']
+    aliases: ['chill out', 'chill', 'chill it', 'freeze', 'freze', 'feeze', 'blizzard spear', 'blizzard', 'frost spear', 'cold snap', 'spear', 'speer', 'frost', 'ice spear']
   },
   absolute_zero: {
     name: 'Absolute Zero',
@@ -180,7 +180,7 @@ const SPELLS = {
     manaRefund: 5,
     element: 'frost',
     incantation: 'Sub zero slam!',
-    aliases: ['sub zero slam', 'sub zero', 'absolute zero', 'zero slam', 'deep freeze', 'zero']
+    aliases: ['sub zero slam', 'sub zero', 'absolute zero', 'zero slam', 'deep freeze', 'zero', 'subzero slam', 'super zero slam']
   },
 
   // ─── Lightning Mage Spells ───
@@ -196,7 +196,7 @@ const SPELLS = {
     instant: true,
     element: 'lightning',
     incantation: 'Buzz off!',
-    aliases: ['buzz off', 'zap', 'zapp', 'sap', 'zip', 'zep', 'shock', 'lightning']
+    aliases: ['buzz off', 'buzz', 'buzz out', 'zap', 'zapp', 'sap', 'zip', 'zep', 'jap', 'shock', 'shok', 'lightning', 'spark', 'zapped']
   },
   thunder_strike: {
     name: 'Thunder Strike',
@@ -210,7 +210,7 @@ const SPELLS = {
     instant: false,
     element: 'lightning',
     incantation: 'Shock therapy!',
-    aliases: ['shock therapy', 'thunder strike', 'thunderstrike', 'thunder strikes', 'thunder', 'thunder struck', 'strike']
+    aliases: ['shock therapy', 'shock the rapy', 'thunder strike', 'thunderstrike', 'thunder strikes', 'thunder', 'thunder struck', 'strike', 'thunderstruck', 'shock strike']
   },
   judgment_bolt: {
     name: 'Judgment Bolt',
@@ -226,7 +226,7 @@ const SPELLS = {
     manaRefund: 5,
     element: 'lightning',
     incantation: 'Smite them!',
-    aliases: ['smite them', 'smite', 'judgment bolt', 'judgement bolt', 'heavenly smite', 'judgment', 'judgement', 'bolt']
+    aliases: ['smite them', 'smite him', 'smite', 'judgment bolt', 'judgement bolt', 'heavenly smite', 'judgment', 'judgement', 'bolt', 'smite the bolt']
   },
 
   // ─── Earth Mage Spells ───
@@ -242,7 +242,7 @@ const SPELLS = {
     instant: true,
     element: 'earth',
     incantation: 'Rock on!',
-    aliases: ['rock on', 'pebble shot', 'pebble', 'pebbles', 'rock shot', 'rock']
+    aliases: ['rock on', 'rock one', 'rock won', 'pebble shot', 'pebble', 'pebbles', 'rock shot', 'pebble shoot']
   },
   boulder_smash: {
     name: 'Boulder Smash',
@@ -256,7 +256,7 @@ const SPELLS = {
     instant: false,
     element: 'earth',
     incantation: 'Eat dirt!',
-    aliases: ['eat dirt', 'heavy rock', 'boulder smash', 'boulder', 'rock smash', 'smash']
+    aliases: ['eat dirt', 'eat the dirt', 'heavy rock', 'boulder smash', 'bolder smash', 'boulder', 'rock smash', 'smash', 'eat dirt now']
   },
   cataclysm: {
     name: 'Cataclysm',
@@ -272,7 +272,7 @@ const SPELLS = {
     manaRefund: 5,
     element: 'earth',
     incantation: 'Terra quake!',
-    aliases: ['terra quake', 'cataclysm', 'earthquake', 'ground slam', 'earth quake', 'quake', 'terra']
+    aliases: ['terra quake', 'terra quakes', 'cataclysm', 'earthquake', 'ground slam', 'earth quake', 'quake', 'terra', 'terror quake']
   },
 
   // ─── Dark Mage Spells ───
@@ -288,7 +288,7 @@ const SPELLS = {
     instant: true,
     element: 'dark',
     incantation: 'Begone!',
-    aliases: ['begone', 'shadow dart', 'be gone', 'dart', 'shadow']
+    aliases: ['begone', 'shadow dart', 'be gone', 'be gone now', 'dark dart', 'dart', 'darts']
   },
   soul_drain: {
     name: 'Soul Drain',
@@ -303,7 +303,7 @@ const SPELLS = {
     instant: false,
     element: 'dark',
     incantation: 'Darkness rise!',
-    aliases: ['darkness rise', 'soul drain', 'drain soul', 'darkness', 'drain', 'soul']
+    aliases: ['darkness rise', 'darkness rises', 'soul drain', 'drain soul', 'darkness', 'darkness rize', 'drain', 'soul']
   },
   abyssal_void: {
     name: 'Abyssal Void',
@@ -319,7 +319,7 @@ const SPELLS = {
     manaRefund: 5,
     element: 'dark',
     incantation: 'Black hole plunge!',
-    aliases: ['black hole plunge', 'black hole', 'abyssal void', 'void plunge', 'abyss', 'void']
+    aliases: ['black hole plunge', 'black hole', 'abyssal void', 'void plunge', 'abyss', 'void', 'blackhole plunge', 'black hole lunch', 'abyssal boyd']
   }
 };
 

@@ -2,7 +2,7 @@
 // Dependency-free text matching for voice & typed incantations.
 // Works in both Node.js and Browser environments.
 
-const SPELLS = (typeof require !== 'undefined') ? require('./spells').SPELLS : (typeof window !== 'undefined' ? window.SPELLS : {});
+const MATCHER_SPELLS = (typeof require !== 'undefined') ? require('./spells').SPELLS : (typeof window !== 'undefined' ? window.SPELLS : {});
 
 function cleanText(text) {
   if (!text) return '';
@@ -40,7 +40,7 @@ function levenshtein(a, b) {
 
 // Build alias list automatically from SPELLS dictionary
 function getSpellAliasEntries(spellsDict) {
-  const dict = spellsDict || (typeof SPELLS !== 'undefined' ? SPELLS : {});
+  const dict = spellsDict || MATCHER_SPELLS;
   const entries = [];
   for (const [spellId, spell] of Object.entries(dict)) {
     if (spell.name) {
@@ -73,7 +73,7 @@ function matchSpell(text, availableSpells) {
   const clean = cleanText(text);
   if (!clean) return null;
 
-  const entries = getSpellAliasEntries(typeof SPELLS !== 'undefined' ? SPELLS : null);
+  const entries = getSpellAliasEntries(MATCHER_SPELLS);
 
   // Filter by player's active spell kit if provided
   const validEntries = availableSpells && availableSpells.length
@@ -81,20 +81,53 @@ function matchSpell(text, availableSpells) {
     : entries;
 
   // 1. Exact or Substring match
+  // Whole-word match only: "no" must not match inside "know"/"snow".
+  const padded = ' ' + clean + ' ';
   for (const entry of validEntries) {
-    if (clean.includes(entry.alias)) {
+    if (padded.includes(' ' + entry.alias + ' ')) {
       return entry.spellId;
     }
   }
 
-  // 2. Fuzzy match token with 1 typo tolerance
+  // 1b. Space-stripped match (e.g. "fire ball" -> "fireball", "ice shard" -> "iceshard")
+  const cleanNoSpaces = clean.replace(/\s+/g, '');
+  for (const entry of validEntries) {
+    const aliasNoSpaces = entry.alias.replace(/\s+/g, '');
+    // One direction only: heard text must CONTAIN the alias. The old reverse check
+    // (alias contains heard) made fragments like "e" or "thun" cast spells.
+    if (aliasNoSpaces.length >= 4 && cleanNoSpaces.includes(aliasNoSpaces)) {
+      return entry.spellId;
+    }
+  }
+
+  // 2. Stemmed token match (e.g. "blocking" -> "block", "healing" -> "heal", "sparks" -> "spark")
+  const stem = w => w.replace(/(ing|ed|es|s)$/, '');
   const words = clean.split(' ');
   for (const word of words) {
     if (word.length < 3) continue;
+    const ws = stem(word);
     for (const entry of validEntries) {
       if (!entry.alias.includes(' ')) {
-        const dist = levenshtein(word, entry.alias);
-        if (dist <= 1) {
+        const es = stem(entry.alias);
+        if (ws === es) {
+          return entry.spellId;
+        }
+      }
+    }
+  }
+
+  // 3. Adaptive fuzzy match token with typo tolerance (dist <= 2 for words >= 5 chars, dist <= 1 for >= 3)
+  for (const word of words) {
+    if (word.length < 3) continue;
+    const ws = stem(word);
+    for (const entry of validEntries) {
+      if (!entry.alias.includes(' ')) {
+        const es = stem(entry.alias);
+        // Strict typo budget: short words must be (almost) exact, otherwise "shock"~"block", "tap"~"zap".
+        // Real mishearings belong in the spell's aliases list, not in loose fuzzing.
+        const L = entry.alias.length;
+        const maxDist = L <= 3 ? 0 : (L < 8 ? 1 : 2);
+        if (levenshtein(word, entry.alias) <= maxDist || levenshtein(ws, es) <= maxDist) {
           return entry.spellId;
         }
       }
