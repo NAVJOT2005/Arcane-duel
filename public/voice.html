@@ -238,10 +238,10 @@
       <thead>
         <tr>
           <th>#</th>
-          <th>Heard (final)</th>
+          <th>Heard</th>
           <th>Matched?</th>
+          <th>Type</th>
           <th>Lang</th>
-          <th>Time</th>
         </tr>
       </thead>
       <tbody id="logBody"></tbody>
@@ -289,10 +289,59 @@
     let attemptCount = 0;
     const logEntries = [];
 
+    // Track the last interim match so we can log it even if it never
+    // becomes "final" (common with short words like "Zap!")
+    let lastInterimText = '';
+    let lastInterimMatch = null;
+    let interimTimer = null;
+
     if (!SpeechRecognition) {
       noSupport.style.display = 'block';
       micBtn.disabled = true;
       micBtn.textContent = '🚫 Not Supported';
+    }
+
+    // ─── Logging helper ───
+    function addLogEntry(heard, matched, type) {
+      attemptCount++;
+      const entry = {
+        num: attemptCount,
+        heard: heard.trim(),
+        matched: matched || '—',
+        type: type,
+        lang: langSelect.value
+      };
+      logEntries.push(entry);
+
+      const row = document.createElement('tr');
+      const matchClass = matched ? 'match' : 'nomatch';
+      row.innerHTML = `
+        <td>${entry.num}</td>
+        <td>${entry.heard}</td>
+        <td class="${matchClass}">${matched ? matched.toUpperCase() : '❌ none'}</td>
+        <td>${type}</td>
+        <td>${entry.lang}</td>
+      `;
+      logBody.prepend(row);
+    }
+
+    // If an interim match sits for 1.5s without changing, log it.
+    // Short words ("Zap!") often never finalize in continuous mode.
+    function scheduleInterimLog(text, spell) {
+      clearTimeout(interimTimer);
+      lastInterimText = text;
+      lastInterimMatch = spell;
+      interimTimer = setTimeout(() => {
+        if (lastInterimText) {
+          addLogEntry(lastInterimText, lastInterimMatch, 'interim');
+          liveFinal.textContent = `"${lastInterimText.trim()}"`;
+          liveInterim.textContent = lastInterimMatch
+            ? `✅ Matched: ${lastInterimMatch.toUpperCase()} (interim)`
+            : '❌ No match (interim)';
+          lastInterimText = '';
+          lastInterimMatch = null;
+        }
+      }, 1500);
     }
 
     function createRecognition() {
@@ -318,41 +367,27 @@
         // Show interim results (what it's hearing right now)
         if (interim) {
           liveInterim.textContent = `Hearing: "${interim}"`;
-          // Try matching interim too (for fast feedback)
           const interimMatch = matchSpell(interim);
           if (interimMatch) {
             liveInterim.textContent += ` → 🎯 ${interimMatch.toUpperCase()}!`;
           }
+          // Schedule logging this interim result in case it never finalizes
+          scheduleInterimLog(interim, interimMatch);
         }
 
-        // Log final results
+        // Log final results immediately (and cancel any pending interim log)
         if (final) {
+          clearTimeout(interimTimer);
+          lastInterimText = '';
+          lastInterimMatch = null;
+
           const matched = matchSpell(final);
           liveFinal.textContent = `"${final.trim()}"`;
           liveInterim.textContent = matched
             ? `✅ Matched: ${matched.toUpperCase()}`
             : '❌ No match';
 
-          attemptCount++;
-          const entry = {
-            num: attemptCount,
-            heard: final.trim(),
-            matched: matched || '—',
-            lang: langSelect.value,
-            time: new Date().toLocaleTimeString()
-          };
-          logEntries.push(entry);
-
-          const row = document.createElement('tr');
-          const matchClass = matched ? 'match' : 'nomatch';
-          row.innerHTML = `
-            <td>${entry.num}</td>
-            <td>${entry.heard}</td>
-            <td class="${matchClass}">${matched ? matched.toUpperCase() : '❌ none'}</td>
-            <td>${entry.lang}</td>
-            <td>${entry.time}</td>
-          `;
-          logBody.prepend(row);
+          addLogEntry(final, matched, 'final');
         }
       };
 
@@ -363,6 +398,10 @@
           stopListening();
         } else if (event.error === 'no-speech') {
           liveInterim.textContent = 'No speech detected. Try again...';
+        } else if (event.error === 'network') {
+          liveInterim.textContent = '🌐 Network error — Web Speech needs internet.';
+        } else {
+          liveInterim.textContent = `⚠️ Error: ${event.error}`;
         }
       };
 
@@ -388,11 +427,13 @@
         liveFinal.textContent = '';
       } catch (e) {
         console.error('Failed to start:', e);
+        liveInterim.textContent = '⚠️ Failed to start mic: ' + e.message;
       }
     }
 
     function stopListening() {
       listening = false;
+      clearTimeout(interimTimer);
       if (recognition) {
         recognition.stop();
         recognition = null;
@@ -424,10 +465,10 @@
         alert('No attempts logged yet!');
         return;
       }
-      let text = 'Attempt | Heard | Matched | Lang | Time\n';
+      let text = 'Attempt | Heard | Matched | Type | Lang\n';
       text += '--------|-------|---------|------|-----\n';
       logEntries.forEach(e => {
-        text += `${e.num} | ${e.heard} | ${e.matched} | ${e.lang} | ${e.time}\n`;
+        text += `${e.num} | ${e.heard} | ${e.matched} | ${e.type} | ${e.lang}\n`;
       });
       navigator.clipboard.writeText(text).then(() => {
         copyBtn.textContent = '✅ Copied!';
